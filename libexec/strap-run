@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Summary: Runs strap to ensure your machine is fully configured
+# Usage: strap run
+
+echo "TEST"

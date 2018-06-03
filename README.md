@@ -1,2 +1,3 @@
 # strap
-Ultimate dotfiles framework
+
+The Ultimate Dotfiles Framework
