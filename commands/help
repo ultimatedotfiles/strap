@@ -12,13 +12,10 @@
 # The remainder of the comment block is displayed as extended
 # documentation.
 
-set -e
-[ -n "$STRAP_DEBUG" ] && set -x
+set -Eeuo pipefail # https://vaneyckt.io/posts/safer_bash_scripts_with_set_euxo_pipefail/
 
-command_path() {
-  local command="$1"
-  command -v strap-"$command" || command -v strap-sh-"$command" || true
-}
+STRAP_DEBUG="${STRAP_DEBUG:-}" && [ -n "$STRAP_DEBUG" ] && set -x
+STRAP_COMMANDS_DIR="${STRAP_COMMANDS_DIR:-}" && [[ -z "$STRAP_COMMANDS_DIR" ]] && echo "STRAP_COMMANDS_DIR is not set" && exit 1
 
 extract_initial_comment_block() {
   sed -ne "
@@ -80,7 +77,7 @@ collect_documentation() {
 }
 
 documentation_for() {
-  local filename="$(command_path "$1")"
+  local filename="$STRAP_COMMANDS_DIR/$1"
   if [ -n "$filename" ]; then
     extract_initial_comment_block < "$filename" | collect_documentation
   fi
@@ -97,7 +94,7 @@ print_summary() {
 }
 
 print_summaries() {
-  for command; do
+  for command in "$@"; do
     print_summary "$command"
   done
 }
@@ -132,31 +129,33 @@ print_usage() {
   [ -z "$usage" ] || echo "$usage"
 }
 
-unset usage
-if [ "$1" = "--usage" ]; then
-  usage="1"
-  shift
-fi
+main() {
+  local usage=""
+  local arg="${1:-}"
+  if [ "$arg" = "--usage" ]; then
+    usage="1"
+    shift
+    arg="$1"
+  fi
 
-if [ -z "$1" ] || [ "$1" == "strap" ]; then
-  echo "Usage: strap <command> [<args>]"
-  [ -z "$usage" ] || exit
-  echo
-  echo "Some useful strap commands are:"
-  print_summaries commands local global shell install uninstall rehash version versions which whence
-  echo
-  echo "See \`strap help <command>' for information on a specific command."
-  echo "For full documentation, see: https://github.com/ultimatedotfiles/strap#readme"
-else
-  command="$1"
-  if [ -n "$(command_path "$command")" ]; then
+  if [ -z "$arg" ] || [ "$arg" == "strap" ]; then
+    echo "Usage: strap [options...] <command> [command_options...]"
+    [ -z "$usage" ] || exit
+    echo
+    echo "Some useful strap commands are:"
+    print_summaries help version run
+    echo
+    echo "See \`strap help <command>' for information on a specific command."
+    echo "For full documentation, see: https://github.com/ultimatedotfiles/strap#readme"
+  else
+    command="$arg"
+    command_path="$STRAP_COMMANDS_DIR/$command"
+    [[ ! -f "$command_path" ]] && echo "strap: no such command \`$command'" >&2 && exit 1
     if [ -n "$usage" ]; then
       print_usage "$command"
     else
       print_help "$command"
     fi
-  else
-    echo "strap: no such command \`$command'" >&2
-    exit 1
   fi
-fi
+}
+main "$@"

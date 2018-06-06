@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+
+STRAP_DEBUG="${STRAP_DEBUG:-}" && [ -n "$STRAP_DEBUG" ] && set -x
+STRAP_LIB_DIR="${STRAP_LIB_DIR:-}" && [[ -z "$STRAP_LIB_DIR" ]] && echo "STRAP_LIB_DIR is not set" && exit 1
+command -v 'strap::abort' || . "$STRAP_LIB_DIR/logging.sh" || . logging.sh
+
+set -a
+
+strap::os::category() {
+  local os
+  local out="$(uname -s)"
+  case "${out}" in
+    Linux*)  os='linux' ;;
+    Darwin*) os='mac' ;;
+    CYGWIN*) os='cygwin' ;;
+    MINGW*)  os='mingw' ;;
+    *)       os="UNKNOWN:${os}" ;;
+  esac
+  echo "$os"
+}
+
+STRAP_OS="$(strap::os::category)"
+
+strap::semver::version() {
+
+  local flags major minor patch
+  local version="$1"
+  [[ -n "$2" ]] && version="$2" && [[ "$1" == "-"* ]] && flags="$1"
+  [[ -z "$version" ]] && strap::error "strap::semver::version requires a version argument" && return 1
+
+  if [[ -n "$flags" ]]; then
+    IFS='.' read -r major minor patch <<-_EOF_
+$version
+_EOF_
+    case "$flags" in
+      *M*) echo "$major" ;;
+      *m*) echo "$minor" ;;
+      *p*) echo "$patch" ;;
+      *) echo "unsupported option: $flags" >&2 && return 1 ;;
+    esac
+  else
+    echo "$version"
+  fi
+}
+
+strap::os::version() {
+  local version
+  case "$STRAP_OS" in
+    mac)
+      version="$(sw_vers -productVersion)"
+      ;;
+    *)
+      echo "unsupported os" >&2 && return 1 ;;
+  esac
+  strap::semver::version "$1" "$version"
+}
+
+STRAP_OS_VERSION="$(strap::os::version)"
+STRAP_OS_VERSION_MAJOR="$(strap::os::version -M)"
+STRAP_OS_VERSION_MINOR="$(strap::os::version -m)"
+STRAP_OS_VERSION_PATCH="$(strap::os::version -p)"

@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# Summary: Display the version of strap
+#
+# Usage: strap version
+#
+# Displays the version number of this strap release, including the current revision from git, if available.  The format of the git revision is:
+#
+#   <version>-<num_commits>-<git_sha>
+#
+# where <num_commits> is the number of commits since <version> was tagged.
+
+set -Eeuo pipefail # https://vaneyckt.io/posts/safer_bash_scripts_with_set_euxo_pipefail/
+
+STRAP_DEBUG="${STRAP_DEBUG:-}" && [ -n "$STRAP_DEBUG" ] && set -x
+STRAP_HOME="${STRAP_HOME:-}" && [[ -z "$STRAP_HOME" ]] && echo "STRAP_HOME is not set" && exit 1
+
+STRAP_VERSION="0.0.1-SNAPSHOT"
+
+main() {
+
+  local git_revision
+
+  if [ -d "$STRAP_HOME" ]; then
+    pushd "$STRAP_HOME" >/dev/null
+    git_revision="$(git describe --tags HEAD 2>/dev/null || true)"
+    git_revision="${git_revision#v}"
+    popd >/dev/null
+  fi
+
+  echo "${git_revision:-$STRAP_VERSION}"
+}
+main

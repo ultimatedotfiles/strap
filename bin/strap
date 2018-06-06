@@ -1,1 +1,136 @@
-../libexec/strap
+#!/usr/bin/env bash
+
+set -Eeuo pipefail # https://vaneyckt.io/posts/safer_bash_scripts_with_set_euxo_pipefail/
+
+STRAP_DEBUG="${STRAP_DEBUG:-}" && [ -n "$STRAP_DEBUG" ] && set -x
+export STRAP_DEBUG
+
+# -----------------------------------------------------------------------------
+# strap::fs
+#
+# Summary: Filesystem functions
+#
+# Ordinarily any exported functions (like fs, i/o, etc) should not be declared
+# in this file, and instead imported.  In this case however, the following
+# strap::fs functions are needed to find the canonical strap script location,
+# which is required to import any other relative strap files.  That is, this is
+# a chicken-and-the-egg problem: we want to import functions, but we need to
+# know where those import files are.  We can't know where the import files are
+# until we know the canonical path of the strap script, and to find that out
+# we need these functions.
+#
+# So we just embed them here to solve that problem.  All other functions
+# should always be imported by referencing the $STRAP_LIB_DIR variable set by
+# this script.
+# -----------------------------------------------------------------------------
+strap::fs::readlink() {
+  $(type -p greadlink readlink | head -1) "$1"
+}
+export -f 'strap::fs::readlink'
+
+strap::fs::dirpath() {
+  [[ -z "$1" ]] && echo "strap::fs::dirpath: a directory argument is required." >&2 && return 1
+  [[ ! -d "$1" ]] && echo "strap::fs::dirpath: argument is not a directory: $1" >&2 && return 1
+  echo "$(cd -P "$1" && pwd)"
+}
+export -f 'strap::fs::dirpath'
+
+strap::fs::filepath() {
+  [[ -d "$1" ]] && echo "strap::fs::filepath: directory arguments are not permitted" >&2 && return 1
+  local dirname="$(dirname "$1")"
+  local filename="$(basename "$1")"
+  local canonical_dir="$(strap::fs::dirpath "$dirname")"
+  echo "$canonical_dir/$filename"
+}
+export -f 'strap::fs::filepath'
+
+##
+# Returns the canonical filesystem path of the specified argument
+# Argument must be a directory or a file
+##
+strap::fs::path() {
+  local target="$1"
+  local dir
+  if [[ -d "$target" ]]; then # target is a directory, get its canonical path:
+    target="$(strap::fs::dirpath "$target")"
+  else
+    while [[ -h "$target" ]]; do # target is a symlink, so resolve it
+      target="$(strap::fs::readlink "$target")"
+      if [[ "$target" != /* ]]; then # target doesn't start with '/', so it's not yet absolute.  Fix that:
+        target="$(strap::fs::filepath "$target")"
+      fi
+    done
+    target="$(strap::fs::filepath "$target")"
+  fi
+  echo "$target"
+}
+export -f 'strap::fs::path'
+
+exit_if_missing() {
+  local dir="$1" && [[ -z "$dir" ]] && echo "first argument must be a directory path" >&2 && exit 1
+  local name="$2" && [[ -z "$name" ]] && echo "second argument must be a var name argument" >&2 && exit 1
+  if [[ ! -d "$dir" ]]; then
+    echo "$name does not reflect a valid directory. The strap installation appears to be invalid." >&2
+    exit 1
+  fi
+}
+
+export STRAP_SCRIPT="$(strap::fs::path "${BASH_SOURCE[0]}")"
+
+# root of the strap installation directory:
+STRAP_HOME="${STRAP_HOME:-}"
+if [[ -z "$STRAP_HOME" ]]; then
+  strap_script_dir="$(dirname "$STRAP_SCRIPT")"
+  export STRAP_HOME="$(strap::fs::path "$strap_script_dir/..")"
+fi
+export STRAP_LIB_DIR="$STRAP_HOME/lib"
+export STRAP_PLUGINS_DIR="$STRAP_HOME/plugins"
+export STRAP_COMMANDS_DIR="$STRAP_HOME/commands"
+
+# user-specific strap home base:
+STRAP_USER_HOME="${STRAP_USER_HOME:-}"
+[[ -z "$STRAP_USER_HOME" ]] && STRAP_USER_HOME="$(strap::fs::path "$HOME/.strap")"
+export STRAP_USER_HOME
+
+export STRAP_WORKING_DIR="$(pwd)"
+
+exit_if_missing "$STRAP_HOME" "STRAP_HOME"
+exit_if_missing "$STRAP_LIB_DIR" "STRAP_LIB_DIR"
+exit_if_missing "$STRAP_PLUGINS_DIR" "STRAP_PLUGINS_DIR"
+exit_if_missing "$STRAP_COMMANDS_DIR" "STRAP_COMMANDS_DIR"
+
+#shopt -s nullglob
+# Plugins
+#for plugin_bin in "${STRAP_ROOT}/plugins/"*/bin; do
+#  bin_path="${bin_path}:${plugin_bin}"
+#done
+#export PATH="${bin_path}:${PATH}"
+
+# Hooks
+#hook_path="${STRAP_HOOK_PATH}"
+#for plugin_hook in "${STRAP_ROOT}/plugins/"*/etc/strap.d; do
+#  hook_path="${hook_path}:${plugin_hook}"
+#done
+#export STRAP_HOOK_PATH="$hook_path"
+#shopt -u nullglob
+
+command="${1:-}"
+case "$command" in
+  "" | "-h" | "--help" )
+    command_script="$STRAP_COMMANDS_DIR/help"
+    echo -e "strap version $("$STRAP_SCRIPT" version)\n$("$command_script")"
+    ;;
+  "-v" | "--version" )
+    echo -e "strap version $("$STRAP_SCRIPT" version)"
+    ;;
+  * )
+    command_script="$STRAP_COMMANDS_DIR/$command"
+    if [ ! -f "$command_script" ]; then
+      echo "strap: no such command \`$command'" >&2
+      exit 1
+    fi
+
+    shift 1
+    exec "$command_script" "$@"
+    ;;
+esac
