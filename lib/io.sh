@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -a
+set -Eeuo pipefail # https://vaneyckt.io/posts/safer_bash_scripts_with_set_euxo_pipefail/
 
 ##
 # Prompts a user for a value and potential confirmation value, and if both match, places the result

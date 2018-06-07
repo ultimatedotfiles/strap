@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -a
+set -Eeuo pipefail # https://vaneyckt.io/posts/safer_bash_scripts_with_set_euxo_pipefail/
 
 # see https://misc.flogisoft.com/bash/tip_colors_and_formatting
 #     https://unix.stackexchange.com/a/269085
@@ -26,13 +26,13 @@ FONT_AQUA="$(tput setaf 14)"
 FONT_WHITE="$(tput setaf 15)"
 
 FONT_BOLD="$(tput bold)"
-FONT_DIM="$(tput dim)"
+#FONT_DIM="$(tput dim)" # causes strap::lib::import failure
 FONT_ULINE="$(tput smul)"
-FONT_ITALIC="$(tput sitm)"
-#UNULINE="$(tput rmul)"
-#INVERT="$(tput rev)"
+#FONT_ITALIC="$(tput sitm)" # causes strap::lib::import failure
+FONT_UNULINE="$(tput rmul)"
+FONT_INVERT="$(tput rev)"
 
-FONT_CLEAR="$(tput sgr 0 0)"
+FONT_CLEAR="$(tput sgr 0)"
 
 #font_style() {
 #  local flags

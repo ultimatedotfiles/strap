@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
 
-STRAP_DEBUG="${STRAP_DEBUG:-}" && [ -n "$STRAP_DEBUG" ] && set -x
-STRAP_LIB_DIR="${STRAP_LIB_DIR:-}" && [[ -z "$STRAP_LIB_DIR" ]] && echo "STRAP_LIB_DIR is not set" && exit 1
-command -v 'strap::abort' || . "$STRAP_LIB_DIR/logging.sh" || . logging.sh
+set -Eeuo pipefail # https://vaneyckt.io/posts/safer_bash_scripts_with_set_euxo_pipefail/
 
-set -a
+command -v strap::lib::import >/dev/null || { echo "strap::lib::import is not available" >&2; exit 1; }
+strap::lib::import logging || . logging.sh
 
 strap::os::category() {
   local os
@@ -46,11 +45,8 @@ _EOF_
 strap::os::version() {
   local version
   case "$STRAP_OS" in
-    mac)
-      version="$(sw_vers -productVersion)"
-      ;;
-    *)
-      echo "unsupported os" >&2 && return 1 ;;
+    mac) version="$(sw_vers -productVersion)" ;;
+    *) echo "unsupported os" >&2 && return 1 ;;
   esac
   strap::semver::version "$1" "$version"
 }

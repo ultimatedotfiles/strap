@@ -1,11 +1,5 @@
 #!/usr/bin/env bash
-# Summary: Runs strap to ensure your machine is fully configured
-# Usage: strap run
 
-# This script was initially based on Mike McQuaid's strap project, but now has a ton of changes:
-# https://github.com/MikeMcQuaid/strap
-
-#set -e
 set -Eeuo pipefail # https://vaneyckt.io/posts/safer_bash_scripts_with_set_euxo_pipefail/
 
 STRAP_DEBUG="${STRAP_DEBUG:-}"
@@ -60,8 +54,8 @@ cleanup() {
 }
 # Trap any exit call:
 trap "cleanup" EXIT
-# Trap Ctrl-C:
-trap 'trap "" INT; echo -e "\nAborting …"; cleanup; exit 1' INT
+# Trap Ctrl-C
+trap 'trap "" INT; echo -r "\nAborting …"; cleanup; exit 1' INT
 
 STRAP_GIT_NAME="$(id -F)"
 STRAP_GIT_EMAIL=
@@ -134,6 +128,9 @@ export -f log
 export -f logn
 export -f println
 
+export _STRAP_MACOSX_VERSION="$(sw_vers -productVersion)"
+echo "$_STRAP_MACOSX_VERSION" | grep $Q -E "^10.(9|10|11|12|13)" || { abort "Run Strap on Mac OS X 10.9/10/11/12/13."; }
+
 [ "$USER" = "root" ] && abort "Run Strap as yourself, not root."
 groups | grep $Q admin || abort "Add $USER to the admin group."
 
@@ -152,7 +149,7 @@ STRAP_SUDO_WAIT_PID="$!"
 ps -p "$STRAP_SUDO_WAIT_PID" &>/dev/null
 strap::ok
 
-strap::running "Checking security settings:"
+logn "Checking security settings:"
 defaults write com.apple.Safari com.apple.Safari.ContentPageGroupIdentifier.WebKit2JavaEnabled -bool false
 defaults write com.apple.Safari com.apple.Safari.ContentPageGroupIdentifier.WebKit2JavaEnabledForLocalFiles -bool false
 sudo defaults write com.apple.screensaver askForPassword -int 1
@@ -166,7 +163,7 @@ if [ -n "$STRAP_GIT_NAME" ] && [ -n "$STRAP_GIT_EMAIL" ]; then
 fi
 strap::ok
 
-strap::running "Checking keyboard and finder settings:"
+logn "Checking keyboard and finder settings:"
 # speed up the keyboard.  Defaults are *slow* for developers:
 restart_finder=false
 defaults write -g KeyRepeat -int 2
@@ -183,7 +180,7 @@ fi
 strap::ok
 
 # Check and enable full-disk encryption.
-strap::running "Checking full-disk encryption status:"
+logn "Checking full-disk encryption status:"
 if fdesetup status | grep $Q -E "FileVault is (On|Off, but will be enabled after the next restart)."; then
   strap::ok
 elif [ -n "$STRAP_INTERACTIVE" ]; then
@@ -194,7 +191,7 @@ else
   echo && abort "Run 'sudo fdesetup enable -user \"$USER\"' to enable full-disk encryption."
 fi
 
-strap::running "Checking Xcode Developer Tools:"
+logn "Checking Xcode Developer Tools:"
 XCODE_DIR=$(xcode-select -print-path 2>/dev/null || true)
 if [ -z "$XCODE_DIR" ] || ! [ -f "$XCODE_DIR/usr/bin/git" ] || ! [ -f "/usr/include/iconv.h" ]; then
 
@@ -208,7 +205,7 @@ if [ -z "$XCODE_DIR" ] || ! [ -f "$XCODE_DIR/usr/bin/git" ] || ! [ -f "/usr/incl
   if ! [ -f "/usr/include/iconv.h" ]; then
     if [ -n "$STRAP_INTERACTIVE" ]; then
       echo
-      strap::running "Requesting user install of Xcode Command Line Tools:"
+      logn "Requesting user install of Xcode Command Line Tools:"
       xcode-select --install
     else
       echo
@@ -222,7 +219,7 @@ strap::ok
 xcode_license() {
   if /usr/bin/xcrun clang 2>&1 | grep $Q license; then
     if [ -n "$INTERACTIVE" ]; then
-      strap::running "Asking for Xcode license confirmation:"
+      logn "Asking for Xcode license confirmation:"
       sudo xcodebuild -license
       strap::ok
     else
@@ -233,7 +230,7 @@ xcode_license() {
 xcode_license
 
 # Check and install any remaining software updates.
-strap::running "Checking Apple software updates:"
+logn "Checking Apple software updates:"
 if ! softwareupdate -l 2>&1 | grep $Q "No new software available."; then
   echo && log "Installing Apple software updates.  This could take a while..."
   sudo softwareupdate --install --all
@@ -254,7 +251,7 @@ straprc_println() {
 }
 export -f straprc_println # export to subshells
 
-strap::running "Checking $STRAPRC_PRETTY_NAME:"
+logn "Checking $STRAPRC_PRETTY_NAME:"
 if [ ! -f $STRAPRC_FILE ]; then
   echo && log "Creating $STRAPRC_PRETTY_NAME..."
   touch $STRAPRC_FILE
@@ -273,12 +270,12 @@ strap::ok
 declare -a files=("$HOME/.bash_profile" "$HOME/.zshrc")
 for file in "${files[@]}"; do
 
-  strap::running "Checking $file:"
+  logn "Checking $file:"
   [ ! -f "$file" ] && echo && log "Creating $file..." && touch "$file"
   chmod u+x "$file"
   strap::ok
 
-  strap::running "Checking $STRAPRC_PRETTY_NAME referenced in $file: "
+  logn "Checking $STRAPRC_PRETTY_NAME referenced in $file: "
   if ! grep -q "$STRAPRC_PRETTY_NAME" "$file"; then
     echo && log "Enabling ${STRAPRC_PRETTY_NAME} in $file..."
     println "$file" ''
@@ -294,7 +291,7 @@ done
 # Homebrew:
 #############################################################
 
-strap::running "Checking Homebrew:"
+logn "Checking Homebrew:"
 if ! command -v brew >/dev/null 2>&1; then
   echo && log "Installing Homebrew..."
   yes '' | /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)";
@@ -309,21 +306,21 @@ if ! command -v brew >/dev/null 2>&1; then
 fi
 strap::ok
 
-strap::running "Checking Homebrew Cask:"
+logn "Checking Homebrew Cask:"
 if ! brew tap | grep ^caskroom/cask$ >/dev/null 2>&1; then
   echo && log "Tapping caskroom/cask..."
   brew tap caskroom/cask
 fi
 strap::ok
 
-strap::running "Checking Homebrew Versions:"
+logn "Checking Homebrew Versions:"
 if ! brew tap | grep ^caskroom/versions$ >/dev/null 2>&1; then
   echo && log "Tapping caskroom/versions..."
   brew tap caskroom/versions
 fi
 strap::ok
 
-strap::running "Checking Homebrew updates:"
+logn "Checking Homebrew updates:"
 brew update >/dev/null
 brew upgrade
 strap::ok

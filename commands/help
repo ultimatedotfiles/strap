@@ -14,7 +14,6 @@
 
 set -Eeuo pipefail # https://vaneyckt.io/posts/safer_bash_scripts_with_set_euxo_pipefail/
 
-STRAP_DEBUG="${STRAP_DEBUG:-}" && [ -n "$STRAP_DEBUG" ] && set -x
 STRAP_COMMANDS_DIR="${STRAP_COMMANDS_DIR:-}" && [[ -z "$STRAP_COMMANDS_DIR" ]] && echo "STRAP_COMMANDS_DIR is not set" && exit 1
 
 extract_initial_comment_block() {
@@ -139,11 +138,11 @@ main() {
   fi
 
   if [ -z "$arg" ] || [ "$arg" == "strap" ]; then
-    echo "Usage: strap [options...] <command> [command_options...]"
+    echo "usage: strap [options...] <command> [command_options...]"
     [ -z "$usage" ] || exit
     echo
-    echo "Some useful strap commands are:"
-    print_summaries help version run
+    echo "commands:"
+    print_summaries help run version
     echo
     echo "See \`strap help <command>' for information on a specific command."
     echo "For full documentation, see: https://github.com/ultimatedotfiles/strap#readme"
