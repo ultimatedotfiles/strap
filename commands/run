@@ -8,20 +8,31 @@
 #set -e
 set -Eeuo pipefail # https://vaneyckt.io/posts/safer_bash_scripts_with_set_euxo_pipefail/
 
-# Keep sudo timestamp updated while Strap is running.
-if [ "$1" = "--sudo-wait" ]; then
+STRAP_DEBUG="${STRAP_DEBUG:-}" && [ -n "$STRAP_DEBUG" ] && set -x
+STRAP_SCRIPT="${STRAP_SCRIPT:-}" && [[ -z "$STRAP_SCRIPT" ]] && echo "STRAP_SCRIPT is not set" && exit 1
+STRAP_COMMANDS_DIR="${STRAP_COMMANDS_DIR:-}" && [[ -z "$STRAP_COMMANDS_DIR" ]] && echo "STRAP_COMMANDS_DIR is not set" && exit 1
+STRAP_LIB_DIR="${STRAP_LIB_DIR:-}" && [[ -z "$STRAP_LIB_DIR" ]] && echo "STRAP_LIB_DIR is not set" && exit 1
+command -v 'strap::readval' || . "$STRAP_LIB_DIR/io.sh" || . ../lib/io.sh
+
+STRAP_SUDO_WAIT_PID=
+STRAP_STEP=
+STRAP_SUCCESS=
+STRAP_QUIET_FLAG="-q"
+Q="$STRAP_QUIET_FLAG"
+
+# Are we running interactive?
+STRAP_INTERACTIVE= # assume not interactive by default
+[[ -t "0" || -p /dev/stdin ]] && STRAP_INTERACTIVE="1" # we're interactive
+
+# sudo keep-alive while strap is running:
+command="${1:-}"
+if [ "$command" = "--sudo-wait" ]; then
   while true; do
-    mkdir -p "/var/db/sudo/$SUDO_USER"
-    touch "/var/db/sudo/$SUDO_USER"
+    sudo -n true
     sleep 1
   done
   exit 0
 fi
-
-STRAP_DEBUG="0"
-[[ "$1" == "--debug" ]] && STRAP_DEBUG="1"
-STRAP_SUCCESS=""
-
 
 cleanup() {
   set +e
@@ -45,108 +56,18 @@ cleanup() {
     fi
   fi
 }
-
 trap "cleanup" EXIT
-
-if [ -n "$STRAP_DEBUG" ]; then
-  set -x
-else
-  STRAP_QUIET_FLAG="-q"
-  Q="$STRAP_QUIET_FLAG"
-fi
-
-# Are we running interactive?
-STRAP_INTERACTIVE="0" # assume not interactive by default
-[[ -t "0" || -p /dev/stdin ]] && STRAP_INTERACTIVE="1" # we're interactive
 
 STRAP_GIT_NAME="$(id -F)"
 STRAP_GIT_EMAIL=
 STRAP_GITHUB_USER=
 STRAP_GITHUB_TOKEN=
-STRAP_ISSUES_URL="https://github.com/les-okta/mac/issues/new"
-
-STRAP_FULL_PATH="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
+STRAP_ISSUES_URL="https://github.com/ultimatedotfiles/strap/issues/new"
 
 abort() { STRAP_STEP="";   echo "!!! $*" >&2; exit 1; }
 log()   { STRAP_STEP="$*"; echo "--> $*"; }
 logn()  { STRAP_STEP="$*"; printf -- "--> $* "; }
 logk()  { STRAP_STEP="";   echo "OK"; }
-
-##
-# Prompts a user for a value and potential confirmation value, and if both match, places the result
-# in the $1 argument.  Can safely read secure values - see the $3 argument description below.
-#
-# Example usage
-# -------------
-#
-# RESULT=''
-# readval RESULT "Enter your value"
-#
-# # RESULT will now contain the read value.  For example:
-# echo "$RESULT"
-#
-# Example password usage
-# ----------------------
-#
-# readval RESULT "Enter your password" true
-#
-# If $3 is true (i.e. secure = true) nd you don't specify a 4th argument, the user will be prompted
-# twice by default.
-#
-#
-# Arguments:
-#
-#  $1: output variable, required.  The read result will be stored in this variable.
-#
-#  $2: prompt - a string, optional.
-#               Defauls to "Enter value"
-#               Do not end it with a colon character ':', as one will always be printed
-#               at the end of the prompt string automatically.
-#
-#  $3: secure - a boolean, optional.
-#               if true, the user's typing will not echo to the terminal.
-#               if false, the user will see what they type.
-#
-#  $4: confirm - a boolean, optional.
-#                Defaults to true if $secure = true.
-#                if true, the user will be prompted again with an " (again)" suffix added to
-#                the $prompt text.
-##
-readval() {
-  local result=$1
-  local prompt="$2" && [ -z "$prompt" ] && prompt="Enter value" #default value
-  local secure=$3
-  local confirm=$4 && [ -z "$confirm" ] && [ "$secure" = true ] && confirm=true
-  local first=""
-  local second=""
-
-  # all the read commands below direct input from <$(tty). See:
-  # https://stackoverflow.com/questions/38484078/why-does-the-bash-read-command-return-without-any-input?rq=1
-
-  while [ -z "$first" ] || [ -z "$second" ] || [ "$first" != "$second" ]; do
-      if [ "$secure" = true ]; then
-        read -r -s -p "$prompt: " first </dev/tty
-        printf "\n"
-      else
-        read -r -p "$prompt: " first </dev/tty
-      fi
-
-      if [ "$confirm" = true ]; then
-          if [ "$secure" = true ]; then
-            read -r -s -p "$prompt (again): " second </dev/tty
-            printf "\n"
-          else
-            read -r -p "$prompt (again): " second </dev/tty
-          fi
-      else
-        # if we don't need confirmation, simulate a second entry to stop the loop:
-        [ "$confirm" != true ] && second="$first"
-      fi
-
-      [ "$first" != "$second" ] && echo "Values are not equal. Please try again."
-  done
-  eval $result=\$first
-}
 
 println() {
   echo "$2" >> "$1"
@@ -208,7 +129,6 @@ export -f abort
 export -f log
 export -f logn
 export -f logk
-export -f readval
 export -f println
 
 export _STRAP_MACOSX_VERSION="$(sw_vers -productVersion)"
@@ -226,8 +146,8 @@ mkvisudocleanup
 log "Enter your password (for sudo access):"
 sudo -k
 "$_STRAP_USER_DIR/.visudo/check"
-[ -f "$STRAP_FULL_PATH" ]
-sudo bash "$STRAP_FULL_PATH" --sudo-wait &
+
+sudo bash "$STRAP_SCRIPT" run --sudo-wait &
 STRAP_SUDO_WAIT_PID="$!"
 ps -p "$STRAP_SUDO_WAIT_PID" &>/dev/null
 logk
@@ -324,7 +244,6 @@ logk
 #############################################################
 # Shell RC File assertions:
 #############################################################
-
 
 export STRAP_SHELL=$(basename $SHELL)
 export STRAPRC_FILE="$HOME/.strap/straprc"
@@ -521,7 +440,6 @@ ensure_brew "git"
 
 logn "Checking git config:"
 
-# https://github.com/les-okta/mac/issues/11
 [ -f "$HOME/.gitconfig" ] || touch "$HOME/.gitconfig"
 chmod 700 "$HOME/.gitconfig"
 
@@ -532,11 +450,11 @@ fi
 if git config --global github.user >/dev/null; then
   STRAP_GITHUB_USER="$(git config --global github.user)"
 else
-  [ -z "$STRAP_GITHUB_USER" ] && printf "\n" && readval STRAP_GITHUB_USER "Enter your GitHub username" false true
+  [ -z "$STRAP_GITHUB_USER" ] && printf "\n" && strap::readval STRAP_GITHUB_USER "Enter your GitHub username" false true
   git config --global github.user "$STRAP_GITHUB_USER"
 fi
 
-_STRAP_KEYCHAIN_ENTRY_LABEL="Okta Strap GitHub API personal access token"
+_STRAP_KEYCHAIN_ENTRY_LABEL="Strap GitHub API personal access token"
 export _STRAP_GITHUB_API_TOKEN="${STRAP_GITHUB_TOKEN}"
 _STRAP_GITHUB_TOKEN_COMMENT='User-supplied GitHub personal access token'
 _store_github_token=false
@@ -552,10 +470,10 @@ elif security find-internet-password -a "$STRAP_GITHUB_USER" -s api.github.com -
 else
   STRAP_GITHUB_PASSWORD=
   # no token yet, we need to get one.  This requires a github password:
-  [ -z "$STRAP_GITHUB_PASSWORD" ] && readval STRAP_GITHUB_PASSWORD "Enter (or cmd-v paste) your GitHub password" true
+  [ -z "$STRAP_GITHUB_PASSWORD" ] && strap::readval STRAP_GITHUB_PASSWORD "Enter (or cmd-v paste) your GitHub password" true
 
   _STRAP_UTC_DATE="$(date -u +%FT%TZ)"
-  _request_body="{\"scopes\":[\"repo\",\"admin:org\",\"admin:public_key\",\"admin:repo_hook\",\"admin:org_hook\",\"gist\",\"notifications\",\"user\",\"delete_repo\",\"admin:gpg_key\"],\"note\":\"Okta Strap-generated token, created at $_STRAP_UTC_DATE\"}"
+  _request_body="{\"scopes\":[\"repo\",\"admin:org\",\"admin:public_key\",\"admin:repo_hook\",\"admin:org_hook\",\"gist\",\"notifications\",\"user\",\"delete_repo\",\"admin:gpg_key\"],\"note\":\"Strap-generated token, created at $_STRAP_UTC_DATE\"}"
   _creds="$STRAP_GITHUB_USER:$STRAP_GITHUB_PASSWORD"
   _response=$(curl --silent --show-error -i -u "$_creds" -H "Content-Type: application/json" -X POST -d "$_request_body" https://api.github.com/authorizations)
   _status=$(echo "$_response" | grep 'HTTP/1.1' | awk '{print $2}') && [ -z "$_status" ] && abort "Unable to parse GitHub response status.  GitHub response format is likely to have changed.  Please report this to the Strap developers."
@@ -563,7 +481,7 @@ else
 
   if [ ! -z "$_otp_type" ]; then # two-factor required - ask for code:
     _strap_github_otp=
-    readval _strap_github_otp "Enter GitHub two-factor code"
+    strap::readval _strap_github_otp "Enter GitHub two-factor code"
 
     #try again, this time with the OTP code
     _response=$(curl --silent --show-error -u "$_creds" -H "X-GitHub-OTP: $_strap_github_otp" -H "Content-Type: application/json" -X POST -d "$_request_body" https://api.github.com/authorizations)
@@ -600,7 +518,7 @@ else
     if [ -z "$STRAP_GIT_EMAIL" ] || [ "$STRAP_GIT_EMAIL" == "null" ]; then
       #read from the user, but ensure the read value has an 'at' sign:
       while [[ "$STRAP_GIT_EMAIL" != *"@"* ]]; do
-        readval STRAP_GIT_EMAIL "Enter your email address" false true
+        strap::readval STRAP_GIT_EMAIL "Enter your email address" false true
       done
     fi
   fi
@@ -611,7 +529,7 @@ fi
 if git config --global user.name >/dev/null; then
   STRAP_GIT_NAME="$(git config --global user.name)"
 else
-  [ -z "$STRAP_GIT_NAME" ] && readval STRAP_GIT_NAME "Enter your first and last name"
+  [ -z "$STRAP_GIT_NAME" ] && strap::readval STRAP_GIT_NAME "Enter your first and last name"
   git config --global user.name "$STRAP_GIT_NAME"
 fi
 
@@ -652,54 +570,14 @@ ensure_strap_file() {
   local path="$1" && [ -z "$path" ] && abort 'ensure_strap_file: $1 must be a strap file path'
   local dstdir="$2" && [ -z "$dstdir" ] && dstdir="$_STRAP_USER_DIR" #default
   local file="$dstdir/$path"
-  [ ! -f "$file" ] && githubdl 'okta/strap' "$path" "$file"
+  [ ! -f "$file" ] && githubdl 'YOURREPO/strap' "$path" "$file"
   chmod go-rwx "$file"
 }
 export -f githubdl
 export -f ensure_strap_file
 
-# https://github.com/les-okta/mac/issues/12
-logn "Checking GitHub private repo read access:"
-# ensure they can access private strap files as necessary:
-status=$(curl -u "$STRAP_GITHUB_USER:$_STRAP_GITHUB_API_TOKEN" -sw '%{http_code}' "https://api.github.com/repos/okta/strap/collaborators/$STRAP_GITHUB_USER")
-if [ "$status" != "204" ]; then
-  echo
-  echo
-  echo 'ERROR:'
-  echo
-  echo "The $STRAP_GITHUB_USER GitHub user account does not currently have permission to read the"
-  echo 'okta/strap private repository. Strap requires this to finish configuring your machine.'
-  echo
-  echo 'Send an email to itson@okta.com and CC your hiring manager with the following request:'
-  echo
-  echo '    Hello,'
-  echo
-  echo '    I am a software engineer and I need "Engineering-Push" privileges for Okta GitHub repositories '
-  echo '    as indicated here: https://oktawiki.atlassian.net/wiki/spaces/IT/pages/27558003/GitHub+Access'
-  echo
-  echo '    Could you please enable these privileges for me?'
-  echo
-  echo '    Thank you!'
-  echo
-  echo 'After you have been granted permissions, you may run strap again.'
-  echo
-  echo
-  exit 1
-fi
-logk
-
-_dstdir="$HOME/.strap/okta"
-mkdir -p "$_dstdir"
-_srcfilename="strap-private.sh"
-_srcfile="$_dstdir/$_srcfilename"
-# always get the latest version:
-rm -rf "$_srcfile"
-ensure_strap_file "$_srcfilename" "$_dstdir"
-chmod u+x "$_srcfile"
-. "$_srcfile"
-
 # make config/state a little more secure, just in case:
-chmod -R go-rwx "$_STRAP_USER_DIR"
+chmod -R go-rwx "$STRAP_USER_HOME"
 
 STRAP_SUCCESS="1"
 log "Your system is now Strap'd!"
