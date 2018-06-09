@@ -3,14 +3,50 @@
 set -Eeuo pipefail # https://vaneyckt.io/posts/safer_bash_scripts_with_set_euxo_pipefail/
 
 STRAP_DEBUG="${STRAP_DEBUG:-}" && [[ -n "$STRAP_DEBUG" ]] && set -x
-[[ "$(whoami)" != "root" ]] && echo "This script must be run via sudo." >&2 && exit 1
 
-file="/etc/sudoers"
+mktempdir() {
+  local dir="$(mktemp -d 2>/dev/null || mktemp -d -t 'strap_temp_dir')"
+  [[ ! -d "$dir" ]] && echo "Unable to create temporary directory for sudoers edits" >&2 && exit 1
+  echo "$dir"
+}
 
-# If strap set something, remove it:
-if grep -q '^## strap:begin$' "$file" && grep -q '^## strap:end$' "$file"; then
-  sed -i '' '/## strap:begin/,/## strap:end/d' "$file"
-fi
+main() {
 
-# remove any blank lines at end of the file:
-#sed -i '' -e :a -e '/^\n*$/{\$d;N;};/\n\$/ba' "$file"
+  local -r file="/etc/sudoers"
+
+  [[ "$(whoami)" != "root" ]] && echo "This script must be run via sudo." >&2 && exit 1
+
+  # If strap set something, remove it:
+  if grep -q '^## strap:begin$' "$file" && grep -q '^## strap:end$' "$file"; then
+
+    # copy contents of existing sudoers into a temp file.  We'll edit and validate this so we don't accidentally
+    # screw up the real file (we'll use visudo later to test if our edits are safe):
+    dir="$(mktempdir)"
+    work_file="$dir/cleaned_sudoers"
+    touch "$work_file"
+    cat "$file" > "$work_file"
+    chmod 440 "$work_file"
+
+    # now perform our edits:
+
+    # remove anything strap might have added at the beginning of the strap run:
+    sed -i '' '/## strap:begin/,/## strap:end/d' "$work_file"
+    # remove any blank lines at end of the file:
+    #sed -i '' -e :a -e '/^\n*$/{\$d;N;};/\n\$/ba' "$file"
+
+    if ! visudo -q -c -f "$work_file"; then
+      echo "Unable to modify sudoers successfully, likely due to a syntax error. $file has not been modified." >&2
+      echo "This is probably due to an unexpected sudoers grammar not currently supported by strap." >&2
+      echo "Please contact the strap developers and report this." >&2
+      rm -rf "$dir"
+      exit 1
+    else
+      # Otherwise edits are safe to use - put them in sudoers:
+      cat "$work_file" > "$file"
+    fi
+
+    rm -rf "$dir"
+
+  fi
+}
+main

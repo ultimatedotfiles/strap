@@ -27,47 +27,34 @@ STRAP_SUCCESS=''
 STRAP_QUIET_FLAG="-q"
 Q="$STRAP_QUIET_FLAG"
 
-# Are we running interactive?
-STRAP_INTERACTIVE='' # assume not interactive by default
-[[ -t "0" || -p /dev/stdin ]] && STRAP_INTERACTIVE="1" # we're interactive
-
-stopsudo() {
-    kill "$SUDO_PID"
-    trap - SIGINT SIGTERM
-    sudo -k
-}
-
-startsudo() {
-    sudo -v
-    ( while true; do sudo -vn; sleep 50; kill -0 "$$" || exit; done; ) &
-    SUDO_PID="$!"
-    trap stopsudo SIGINT SIGTERM
-}
-
-#cleanup() {
-#  set +e
-#  rm -f "$CLT_PLACEHOLDER"
-#  if [ -z "$STRAP_SUCCESS" ]; then
-#    if [ -n "$STRAP_STEP" ]; then
-#      echo "!!! $STRAP_STEP FAILED" >&2
-#    else
-#      echo "!!! FAILED" >&2
-#    fi
-#    if [ -z "$STRAP_DEBUG" ]; then
-#      echo "!!! Run '$0 --debug' for debugging output." >&2
-#      echo "!!! If you're stuck: file an issue with debugging output at:" >&2
-#      echo "!!!   $STRAP_ISSUES_URL" >&2
-#    fi
-#  fi
-#}
-## Trap any exit call:
-#trap 'cleanup' EXIT
-
 STRAP_GIT_NAME="$(id -F)"
 STRAP_GIT_EMAIL=
 STRAP_GITHUB_USER=
 STRAP_GITHUB_TOKEN=
 STRAP_ISSUES_URL="https://github.com/ultimatedotfiles/strap/issues/new"
+
+# Are we running interactive?
+STRAP_INTERACTIVE='' # assume not interactive by default
+[[ -t "0" || -p /dev/stdin ]] && STRAP_INTERACTIVE="1" # we're interactive
+
+cleanup() {
+  set +e
+  rm -f "$CLT_PLACEHOLDER"
+  if [ -z "$STRAP_SUCCESS" ]; then
+    if [ -n "$STRAP_STEP" ]; then
+      echo "!!! $STRAP_STEP FAILED" >&2
+    else
+      echo "!!! FAILED" >&2
+    fi
+    if [ -z "$STRAP_DEBUG" ]; then
+      echo "!!! Run '$0 --debug' for debugging output." >&2
+      echo "!!! If you're stuck: file an issue with debugging output at:" >&2
+      echo "!!!   $STRAP_ISSUES_URL" >&2
+    fi
+  fi
+}
+# Trap any exit call:
+trap 'cleanup' EXIT
 
 echo -e "\n${FONT_BOLD}Bootstrapping your machine. Here we go!${FONT_CLEAR}"
 
@@ -86,7 +73,6 @@ groups | grep $Q admin || strap::abort "Add $USER to the admin group."
 
 # Initialize sudo access:
 strap::sudo::enable
-#startsudo
 
 #############################################################
 # Shell RC File assertions:
@@ -133,6 +119,4 @@ done
 chmod -R go-rwx "$STRAP_USER_HOME"
 
 STRAP_SUCCESS="1"
-printf "\n${FONT_BOLD}${FONT_GREEN}SUCCESS - Your system is now Strap'd!${FONT_CLEAR}\n\n"
-
-#strap::sudo::cleanup
+printf "\n${FONT_BOLD}${FONT_GREEN}SUCCESS: Your system is now Strap'd!${FONT_CLEAR}\n\n"
