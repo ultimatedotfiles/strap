@@ -8,6 +8,8 @@ set -Eeuo pipefail # https://vaneyckt.io/posts/safer_bash_scripts_with_set_euxo_
 #     https://en.wikipedia.org/wiki/X11_color_names
 #     https://jonasjacek.github.io/colors/
 
+set -a
+
 FONT_BLACK="$(tput setaf 0)"
 FONT_MAROON="$(tput setaf 1)"
 FONT_GREEN="$(tput setaf 2)"
@@ -25,6 +27,12 @@ FONT_FUSHIA="$(tput setaf 13)"
 FONT_AQUA="$(tput setaf 14)"
 FONT_WHITE="$(tput setaf 15)"
 
+FONT_DARK_BLUE="$(tput setaf 18)"
+FONT_DODGER_BLUE_3="$(tput setaf 26)"
+FONT_MEDIUM_PURPLE_4="$(tput setaf 60)"
+FONT_SLATE_BLUE_3="$(tput setaf 61)"
+FONT_GRAY_93="$(tput setaf 255)"
+
 FONT_BOLD="$(tput bold)"
 #FONT_DIM="$(tput dim)" # causes strap::lib::import failure
 FONT_ULINE="$(tput smul)"
@@ -33,6 +41,9 @@ FONT_UNULINE="$(tput rmul)"
 FONT_INVERT="$(tput rev)"
 
 FONT_CLEAR="$(tput sgr 0)"
+
+FONT_CHECKMARK="\342\234\224"
+FONT_ERRCROSS="\xE2\x9D\x8C "
 
 #font_style() {
 #  local flags
@@ -54,3 +65,5 @@ FONT_CLEAR="$(tput sgr 0)"
 #for color in "${FG[@]}"; do
 #  echo -e "Hello $(font_style -ui ${color}World!)"
 #done
+
+set +a

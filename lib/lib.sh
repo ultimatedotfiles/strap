@@ -7,6 +7,8 @@ STRAP_PLUGINS_DIR="${STRAP_PLUGINS_DIR:-}" && [[ -z "$STRAP_PLUGINS_DIR" ]] && e
 STRAP_PLUGIN_LIB_DIR="${STRAP_PLUGIN_LIB_DIR:-}"
 export STRAP_LIB_LOADED_LIBS="${STRAP_LIB_LOADED_LIBS:-}"
 
+set -a
+
 strap::lib::import() {
 
   local name=
@@ -60,3 +62,5 @@ strap::lib::import() {
   fi
   export STRAP_LIB_LOADED_LIBS
 }
+
+set +a

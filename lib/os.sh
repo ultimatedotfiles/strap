@@ -5,6 +5,8 @@ set -Eeuo pipefail # https://vaneyckt.io/posts/safer_bash_scripts_with_set_euxo_
 command -v strap::lib::import >/dev/null || { echo "strap::lib::import is not available" >&2; exit 1; }
 strap::lib::import logging || . logging.sh
 
+set -a
+
 strap::os::category() {
   local os
   local out="$(uname -s)"
@@ -55,3 +57,5 @@ STRAP_OS_VERSION="$(strap::os::version)"
 STRAP_OS_VERSION_MAJOR="$(strap::os::version -M)"
 STRAP_OS_VERSION_MINOR="$(strap::os::version -m)"
 STRAP_OS_VERSION_PATCH="$(strap::os::version -p)"
+
+set +a

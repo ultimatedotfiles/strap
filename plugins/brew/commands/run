@@ -4,6 +4,7 @@ set -Eeuo pipefail # https://vaneyckt.io/posts/safer_bash_scripts_with_set_euxo_
 
 command -v strap::lib::import >/dev/null || { echo "strap::lib::import is not available" >&2; exit 1; }
 strap::lib::import logging || . ../../../lib/logging.sh
+strap::lib::import brew brew || . ../lib/brew.sh
 
 strap::action "Checking Homebrew"
 if ! command -v brew >/dev/null 2>&1; then
@@ -19,6 +20,8 @@ if ! command -v brew >/dev/null 2>&1; then
   fi
 fi
 logk
+
+export STRAP_BREW_PREFIX="$(brew --prefix)"
 
 logn "Checking Homebrew Cask:"
 if ! brew tap | grep ^caskroom/cask$ >/dev/null 2>&1; then

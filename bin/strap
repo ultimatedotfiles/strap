@@ -23,17 +23,17 @@ export STRAP_DEBUG
 # should always be imported by using the strap::lib::import function in
 # $STRAP_HOME/lib/lib.sh
 # -----------------------------------------------------------------------------
+set -a
+
 strap::fs::readlink() {
   $(type -p greadlink readlink | head -1) "$1" # prefer greadlink if it exists
 }
-export -f 'strap::fs::readlink'
 
 strap::fs::dirpath() {
   [[ -z "$1" ]] && echo "strap::fs::dirpath: a directory argument is required." >&2 && return 1
   [[ ! -d "$1" ]] && echo "strap::fs::dirpath: argument is not a directory: $1" >&2 && return 1
   echo "$(cd -P "$1" && pwd)"
 }
-export -f 'strap::fs::dirpath'
 
 strap::fs::filepath() {
   [[ -d "$1" ]] && echo "strap::fs::filepath: directory arguments are not permitted" >&2 && return 1
@@ -42,7 +42,6 @@ strap::fs::filepath() {
   local canonical_dir="$(strap::fs::dirpath "$dirname")"
   echo "$canonical_dir/$filename"
 }
-export -f 'strap::fs::filepath'
 
 ##
 # Returns the canonical filesystem path of the specified argument
@@ -64,7 +63,8 @@ strap::fs::path() {
   fi
   echo "$target"
 }
-export -f 'strap::fs::path'
+
+set +a
 
 exit_if_missing() {
   local dir="$1" && [[ -z "$dir" ]] && echo "first argument must be a directory path" >&2 && exit 1

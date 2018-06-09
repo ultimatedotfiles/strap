@@ -5,6 +5,8 @@ set -Eeuo pipefail # https://vaneyckt.io/posts/safer_bash_scripts_with_set_euxo_
 command -v strap::lib::import >/dev/null || { echo "strap::lib::import is not available" >&2; exit 1; }
 strap::lib::import logging || . ../../../lib/logging.sh
 
+STRAP_BREW_PREFIX="${STRAP_BREW_PREFIX:-}"
+
 strap::brew::ensure_formula() {
   local command="$1" && [ -z "$command" ] && abort 'strap::brew::ensure_formula: $1 must be the command'
   local formula="$2" && [ -z "$formula" ] && abort 'strap::brew::ensure_formula: $2 must be the formula id'
@@ -63,8 +65,4 @@ strap::brew::ensure_brew_shellrc_entry() {
   logk
 }
 
-# allow subshells to call these functions:
-export -f ensure_formula
-export -f ensure_brew
-export -f ensure_cask
-export -f ensure_brew_shellrc_entry
+[[ -z "$STRAP_BREW_PREFIX" ]] && command -v brew >/dev/null && export STRAP_BREW_PREFIX="$(brew --prefix)"

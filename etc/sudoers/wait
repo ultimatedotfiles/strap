@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+while true; do
+  sudo -vn >/dev/null 2>&1
+  sleep 1
+  if [[ -n "$1" ]]; then
+    kill -0 "$1" >/dev/null 2>&1 || exit 0
+  fi
+done
+exit 0
