@@ -3,6 +3,8 @@
 set -Eeuo pipefail # https://vaneyckt.io/posts/safer_bash_scripts_with_set_euxo_pipefail/
 
 STRAP_DEBUG="${STRAP_DEBUG:-}" && [[ -n "$STRAP_DEBUG" ]] && set -x
+readonly SUDOERS_FILE="/etc/sudoers"
+readonly TARGET_USER="$(logname)"
 
 is_global_authc_timeout_zero() {
   local authc_timeout="$(sudo sudo -V | grep 'Authentication timestamp timeout: ' | awk '{print $4}')"
@@ -10,11 +12,11 @@ is_global_authc_timeout_zero() {
 }
 
 is_strap_edited() {
-  grep -q '^## strap:begin' "$file"
+  grep -q '^## strap:begin' "$SUDOERS_FILE"
 }
 
 user_authc_timeout_exists() {
-  grep -q "^Defaults:$logname[[:blank:]]\+timestamp_timeout[[:blank:]]*=[[:blank:]]*" "$file"
+  grep -q "^Defaults:$TARGET_USER[[:blank:]]\+timestamp_timeout[[:blank:]]*=[[:blank:]]*" "$SUDOERS_FILE"
 }
 
 mktempdir() {
@@ -26,8 +28,6 @@ mktempdir() {
 main() {
 
   local -r cleanup_script="$1"
-  local -r logname="$(logname)"
-  local -r file="/etc/sudoers"
 
   [[ "$(whoami)" != "root" ]] && echo "This script must be run via sudo." >&2 && exit 1
   [[ -z "$cleanup_script" ]] && echo "This script must be specified with one argument that equals the fully qualfied cleanup script path" >&2 && exit 1
@@ -47,7 +47,7 @@ main() {
     dir="$(mktempdir)"
     work_file="$dir/edited_sudoers"
     touch "$work_file"
-    cat "$file" > "$work_file"
+    cat "$SUDOERS_FILE" > "$work_file"
     chmod 440 "$work_file"
 
     # now add our edits:
@@ -56,23 +56,23 @@ main() {
     # and remove these lines when strap exits or traps EXIT|SIGINT|SIGTERM:
 
     echo "## strap:begin" >> "$work_file"
-    echo "Defaults:$logname timestamp_timeout=1" >> "$work_file"
+    echo "Defaults:$TARGET_USER timestamp_timeout=1" >> "$work_file"
     # In an EXIT trap, sudo privileges obtained during the main script execution have been lost (since the main script
     # execution context has been removed), so we can't rely on sudo to run the cleanup script.  So we allow this exact
     # cleanup script to be explicitly run without a sudo password.  This is safe because the cleanup script does nothing
     # more than removes these added lines to ensure that configuration reverts to exactly what it was before strap ran:
-    echo "$logname ALL= NOPASSWD: $cleanup_script" >> "$work_file"
+    echo "$TARGET_USER ALL= NOPASSWD: $cleanup_script" >> "$work_file"
     echo "## strap:end" >> "$work_file"
 
     if ! visudo -q -c -f "$work_file"; then
-      echo "Unable to modify sudoers successfully, likely due to a syntax error. $file has not been modified." >&2
+      echo "Unable to modify sudoers successfully, likely due to a syntax error. $SUDOERS_FILE has not been modified." >&2
       echo "This is probably due to an unexpected sudoers grammar not currently supported by strap." >&2
       echo "Please contact the strap developers and report this." >&2
       rm -rf "$dir"
       exit 1
     else
       # Otherwise edits are safe to use - put them in sudoers:
-      cat "$work_file" > "$file"
+      cat "$work_file" > "$SUDOERS_FILE"
     fi
 
     rm -rf "$dir"
