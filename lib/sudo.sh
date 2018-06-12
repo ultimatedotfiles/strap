@@ -47,8 +47,8 @@ strap::sudo::enable() {
 
   sudo -k # clear out any cached time to ensure we start fresh
 
-  echo
   sudo -p "Enter your sudo password: " "$__strap__sudo__edit" "$__strap__sudo__cleanup"
+  sudo -v -p "Enter your sudo password (confirm): " # Required if system-wide timeout is zero. Does nothing otherwise.
 
   trap 'strap::sudo::cleanup' SIGINT SIGTERM EXIT
 

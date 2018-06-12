@@ -56,7 +56,7 @@ cleanup() {
 # Trap any exit call:
 trap 'cleanup' EXIT
 
-echo -e "\n${FONT_BOLD}Bootstrapping your machine. Here we go!${FONT_CLEAR}"
+echo -e "\n${FONT_BOLD}Bootstrapping your machine. Here we go!${FONT_CLEAR}\n"
 
 #abort() { STRAP_STEP="";   echo "!!! $*" >&2; exit 1; }
 #log()   { STRAP_STEP="$*"; echo "--> $*"; }
@@ -75,10 +75,120 @@ groups | grep $Q admin || strap::abort "Add $USER to the admin group."
 strap::sudo::enable
 
 #############################################################
-# Shell RC File assertions:
+# System Defaults
 #############################################################
 
-strap::bot "Checking shell init files"
+strap::bot "System Defaults"
+
+# --------------
+
+strap::running "Checking security settings"
+defaults write com.apple.Safari com.apple.Safari.ContentPageGroupIdentifier.WebKit2JavaEnabled -bool false
+defaults write com.apple.Safari com.apple.Safari.ContentPageGroupIdentifier.WebKit2JavaEnabledForLocalFiles -bool false
+sudo defaults write com.apple.screensaver askForPassword -int 1
+sudo defaults write com.apple.screensaver askForPasswordDelay -int 0
+sudo defaults write /Library/Preferences/com.apple.alf globalstate -int 1
+sudo launchctl load /System/Library/LaunchDaemons/com.apple.alf.agent.plist 2>/dev/null
+
+if [ -n "$STRAP_GIT_NAME" ] && [ -n "$STRAP_GIT_EMAIL" ]; then
+  sudo defaults write /Library/Preferences/com.apple.loginwindow \
+    LoginwindowText \
+    "Found this computer? Please contact $STRAP_GIT_NAME at $STRAP_GIT_EMAIL."
+fi
+strap::ok
+
+# --------------
+
+# Check and enable full-disk encryption.
+strap::running "Checking full-disk encryption status"
+if fdesetup status | grep $Q -E "FileVault is (On|Off, but will be enabled after the next restart)."; then
+  strap::ok
+elif [ -n "$STRAP_INTERACTIVE" ]; then
+  strap::action "Enabling full-disk encryption on next reboot:"
+  sudo fdesetup enable -user "$USER" | tee ~/Desktop/"FileVault Recovery Key.txt"
+  strap::ok
+else
+  echo && strap::abort "Run 'sudo fdesetup enable -user \"$USER\"' to enable full-disk encryption."
+fi
+
+# --------------
+
+strap::running "Checking keyboard and finder settings"
+# speed up the keyboard.  Defaults are *slow* for developers:
+restart_finder=false
+defaults write -g KeyRepeat -int 2
+defaults write -g InitialKeyRepeat -int 14
+if [ "$(defaults read com.apple.finder AppleShowAllFiles)" != "YES" ]; then
+  defaults write com.apple.finder AppleShowAllFiles YES; # show hidden files
+  restart_finder=true
+fi
+if [ "$(defaults read NSGlobalDomain AppleShowAllExtensions)" != "1" ]; then
+  defaults write NSGlobalDomain AppleShowAllExtensions -bool true # show all file extensions
+  restart_finder=true
+fi
+[ $restart_finder = true ] && sudo killall Finder >/dev/null 2>&1
+strap::ok
+
+# --------------
+
+strap::bot "Xcode Developer Tools"
+
+strap::running "Checking Xcode Developer Tools"
+XCODE_DIR=$(xcode-select -print-path 2>/dev/null || true)
+if [ -z "$XCODE_DIR" ] || ! [ -f "$XCODE_DIR/usr/bin/git" ] || ! [ -f "/usr/include/iconv.h" ]; then
+
+  strap::action "Installing Xcode Command Line Tools"
+  CLT_PLACEHOLDER="/tmp/.com.apple.dt.CommandLineTools.installondemand.in-progress"
+  sudo touch "$CLT_PLACEHOLDER"
+  CLT_PACKAGE=$(softwareupdate -l | grep -B 1 -E "Command Line (Developer|Tools)" | \
+                awk -F"*" '/^ +\*/ {print $2}' | sed 's/^ *//' | head -n1)
+  sudo softwareupdate -i "$CLT_PACKAGE"
+  sudo rm -f "$CLT_PLACEHOLDER"
+  if ! [ -f "/usr/include/iconv.h" ]; then
+    if [ -n "$STRAP_INTERACTIVE" ]; then
+      strap::action "Requesting user install of Xcode Command Line Tools"
+      xcode-select --install
+    else
+      echo
+      strap::abort "Run 'xcode-select --install' to install the Xcode Command Line Tools."
+    fi
+  fi
+fi
+strap::ok
+
+# Check if the Xcode license is agreed to and agree if not.
+xcode_license() {
+  if /usr/bin/xcrun clang 2>&1 | grep $Q license; then
+    if [ -n "$INTERACTIVE" ]; then
+      strap::running "Asking for Xcode license confirmation"
+      sudo xcodebuild -license
+      strap::ok
+    else
+      abort "Run 'sudo xcodebuild -license' to agree to the Xcode license."
+    fi
+  fi
+}
+xcode_license
+
+# --------------
+
+strap::bot "Apple Software Updates"
+
+strap::running "Checking Apple software updates"
+if ! softwareupdate -l 2>&1 | grep $Q "No new software available."; then
+  strap::action "Installing Apple software updates. This could take a while"
+  echo
+  sudo softwareupdate --install --all
+  xcode_license
+fi
+strap::ok
+
+#############################################################
+# Shell init files:
+#############################################################
+
+strap::bot "Shell Init Files"
+
 STRAP_SHELL=$(basename "$SHELL")
 STRAP_SHELL_INIT_FILE="${STRAP_USER_HOME:-}/straprc"
 
@@ -89,12 +199,16 @@ if [ ! -f "$STRAP_SHELL_INIT_FILE" ]; then
 fi
 strap::ok
 
-declare -a files=("$HOME/.bash_profile" "$HOME/.zshrc")
+file="$HOME/.bash_profile"
+strap::running "Checking ~/.bash_profile exists"
+[ ! -f "$file" ] && strap::action "Creating ~/.bash_profile" && touch "$file"
+strap::ok
+
+declare -a files=("$HOME/.bashrc" "$HOME/.zshrc")
 for file in "${files[@]}"; do
 
   strap::running "Checking $file exists"
-  [ ! -f "$file" ] && echo && strap::action "Creating $file" && touch "$file"
-  chmod u+x "$file"
+  [ ! -f "$file" ] && strap::action "Creating $file" && touch "$file"
   strap::ok
 
   strap::running "Checking $STRAP_SHELL_INIT_FILE referenced in $file"
@@ -107,6 +221,18 @@ for file in "${files[@]}"; do
   fi
   strap::ok
 done
+
+file="$HOME/.bash_profile"
+strap::running "Checking ~/.bashrc in ~/.bash_profile per bash user guide recommendations"
+if ! grep -q "bashrc" "$file"; then
+  println "$file" ''
+  println "$file" '# strap:begin'
+  println "$file" '# source .bashrc from within .bash_profile per bash user guide: '
+  println "$file" '# https://www.gnu.org/software/bash/manual/html_node/Bash-Startup-Files.html'
+  println "$file" '[ -f "$HOME/.bashrc" ] && . "$HOME/.bashrc"'
+  println "$file" '# strap:end'
+fi
+strap::ok
 
 #############################################################
 # Homebrew:

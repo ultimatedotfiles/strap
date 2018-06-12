@@ -20,7 +20,7 @@ strap::running() {
 }
 
 strap::action() {
-    echo -en "    $FONT_BOLD$FONT_DODGER_BLUE_3 ⇒  $FONT_CLEAR$FONT_BOLD${1:-} ... "
+    echo -en "\n    $FONT_BOLD$FONT_DODGER_BLUE_3 ⇒  $FONT_CLEAR$FONT_BOLD${1:-} ... "
 }
 
 strap::warn() {

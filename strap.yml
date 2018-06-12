@@ -1,0 +1,13 @@
+user:
+  name:
+    given: Test
+    family: Testarossa
+
+macos:
+  defaults:
+    NSGlobalDomain:
+      KeyRepeat: 2
+      InitialKeyRepeat: 14
+      AppleShowAllExtensions: { value: true, restart_finder: "if-changed" }
+    com.apple.finder:
+      AppleShowAllFiles: { value: YES, restart_finder: "if-changed" }
