@@ -175,7 +175,7 @@ xcode_license
 strap::bot "Apple Software Updates"
 
 strap::running "Checking Apple software updates"
-if ! softwareupdate -l 2>&1 | grep $Q "No new software available."; then
+if ! sudo softwareupdate -l 2>&1 | grep -q 'No new software available.'; then
   strap::action "Installing Apple software updates. This could take a while"
   echo
   sudo softwareupdate --install --all
@@ -237,9 +237,52 @@ strap::ok
 #############################################################
 # Homebrew:
 #############################################################
-#"$STRAP_HOME/plugins/brew/bin/run"
 
-#strap::lib::import brew brew || . ../plugins/brew/lib/brew.sh
+strap::bot "Homebrew"
+
+strap::running "Checking Homebrew"
+if command -v brew >/dev/null 2>&1; then
+  strap::ok
+  strap::running "Checking Homebrew updates"
+  brew update >/dev/null
+  brew upgrade
+  strap::ok
+else
+  strap::action "Installing Homebrew"
+  yes '' | /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)";
+
+#    TODO: enable homebrew in straprc
+#    if [[ "$PATH" != *"/usr/local/bin"* ]]; then
+#      straprc_println ''
+#      straprc_println '# homebrew:begin'
+#      straprc_println 'export PATH="/usr/local/bin:$PATH"'
+#      straprc_println '# homebrew:end'
+#      source $STRAPRC_FILE
+#    fi
+    strap::ok
+fi
+
+strap::lib::import brew || source ../lib/brew.sh
+
+#logn "Checking Homebrew Cask:"
+#if ! brew tap | grep ^caskroom/cask$ >/dev/null 2>&1; then
+#  echo && log "Tapping caskroom/cask..."
+#  brew tap caskroom/cask
+#fi
+#logk
+#
+#logn "Checking Homebrew Versions:"
+#if ! brew tap | grep ^caskroom/versions$ >/dev/null 2>&1; then
+#  echo && log "Tapping caskroom/versions..."
+#  brew tap caskroom/versions
+#fi
+#logk
+#
+#logn "Checking Homebrew updates:"
+#brew update >/dev/null
+#brew upgrade
+#logk
+
 
 # make config/state a little more secure, just in case:
 chmod -R go-rwx "$STRAP_USER_HOME"
