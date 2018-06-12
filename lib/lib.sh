@@ -2,12 +2,10 @@
 
 set -Eeuo pipefail # https://vaneyckt.io/posts/safer_bash_scripts_with_set_euxo_pipefail/
 
-STRAP_LIB_DIR="${STRAP_LIB_DIR:-}" && [[ -z "$STRAP_LIB_DIR" ]] && echo "STRAP_LIB_DIR is not set." >&2 && exit 1
-STRAP_PLUGINS_DIR="${STRAP_PLUGINS_DIR:-}" && [[ -z "$STRAP_PLUGINS_DIR" ]] && echo "STRAP_PLUGINS_DIR is not set." >&2 && exit 1
+[[ -z "$STRAP_LIB_DIR" ]] && echo "STRAP_LIB_DIR is not set." >&2 && exit 1
+[[ -z "$STRAP_PLUGINS_DIR" ]] && echo "STRAP_PLUGINS_DIR is not set." >&2 && exit 1
 STRAP_PLUGIN_LIB_DIR="${STRAP_PLUGIN_LIB_DIR:-}"
-export STRAP_LIB_LOADED_LIBS="${STRAP_LIB_LOADED_LIBS:-}"
-
-set -a
+STRAP_LIB_LOADED_LIBS="${STRAP_LIB_LOADED_LIBS:-}"
 
 strap::lib::import() {
 
@@ -62,5 +60,4 @@ strap::lib::import() {
   fi
   export STRAP_LIB_LOADED_LIBS
 }
-
-set +a
+declare -rfx strap::lib::import

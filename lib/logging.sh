@@ -8,12 +8,11 @@ strap::lib::import fonts || . fonts.sh
 set -a
 
 strap::ok() {
-    #printf "${FONT_GREEN}OK${FONT_CLEAR} ${1:-}\n"
     echo -e "${FONT_GREEN}OK${FONT_CLEAR} ${1:-}"
 }
 
 strap::bot() {
-    echo -e "\n$FONT_ULINE$FONT_GREEN\[._.]/$FONT_CLEAR$FONT_ULINE$FONT_BOLD  ${1:-}$FONT_CLEAR\n"
+    echo -e "\n${FONT_GREEN}\[^_^]/${FONT_CLEAR} ${FONT_ULINE}${FONT_BOLD}${1:-}${FONT_CLEAR}\n"
 }
 
 strap::running() {

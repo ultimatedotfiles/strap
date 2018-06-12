@@ -14,7 +14,7 @@
 
 set -Eeuo pipefail # https://vaneyckt.io/posts/safer_bash_scripts_with_set_euxo_pipefail/
 
-STRAP_COMMANDS_DIR="${STRAP_COMMANDS_DIR:-}" && [[ -z "$STRAP_COMMANDS_DIR" ]] && echo "STRAP_COMMANDS_DIR is not set" && exit 1
+STRAP_CMD_DIR="${STRAP_CMD_DIR:-}" && [[ -z "$STRAP_CMD_DIR" ]] && echo "STRAP_CMD_DIR is not set" && exit 1
 
 extract_initial_comment_block() {
   sed -ne "
@@ -76,7 +76,7 @@ collect_documentation() {
 }
 
 documentation_for() {
-  local filename="$STRAP_COMMANDS_DIR/$1"
+  local filename="$STRAP_CMD_DIR/$1"
   if [ -n "$filename" ]; then
     extract_initial_comment_block < "$filename" | collect_documentation
   fi
@@ -148,7 +148,7 @@ main() {
     echo "For full documentation, see: https://github.com/ultimatedotfiles/strap#readme"
   else
     command="$arg"
-    command_path="$STRAP_COMMANDS_DIR/$command"
+    command_path="$STRAP_CMD_DIR/$command"
     [[ ! -f "$command_path" ]] && echo "strap: no such command \`$command'" >&2 && exit 1
     if [ -n "$usage" ]; then
       print_usage "$command"

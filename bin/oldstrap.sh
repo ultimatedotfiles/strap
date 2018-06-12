@@ -4,7 +4,7 @@ set -Eeuo pipefail # https://vaneyckt.io/posts/safer_bash_scripts_with_set_euxo_
 
 STRAP_DEBUG="${STRAP_DEBUG:-}"
 STRAP_SCRIPT="${STRAP_SCRIPT:-}" && [[ -z "$STRAP_SCRIPT" ]] && echo "STRAP_SCRIPT is not set" && exit 1
-STRAP_COMMANDS_DIR="${STRAP_COMMANDS_DIR:-}" && [[ -z "$STRAP_COMMANDS_DIR" ]] && echo "STRAP_COMMANDS_DIR is not set" && exit 1
+STRAP_CMD_DIR="${STRAP_CMD_DIR:-}" && [[ -z "$STRAP_CMD_DIR" ]] && echo "STRAP_CMD_DIR is not set" && exit 1
 STRAP_LIB_DIR="${STRAP_LIB_DIR:-}" && [[ -z "$STRAP_LIB_DIR" ]] && echo "STRAP_LIB_DIR is not set" && exit 1
 command -v strap::lib::import >/dev/null || { echo "strap::lib::import is not available" >&2; exit 1; }
 strap::lib::import io || . ../lib/io.sh

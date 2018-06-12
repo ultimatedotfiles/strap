@@ -2,8 +2,6 @@
 
 set -Eeuo pipefail # https://vaneyckt.io/posts/safer_bash_scripts_with_set_euxo_pipefail/
 
-set -a
-
 ##
 # Prompts a user for a value and potential confirmation value, and if both match, places the result
 # in the $1 argument.  Can safely read secure values - see the $3 argument description below.
@@ -79,5 +77,4 @@ strap::readval() {
   done
   eval $result=\$first
 }
-
-set +a
+declare -rfx strap::readval

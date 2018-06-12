@@ -19,8 +19,7 @@ strap::os::category() {
   esac
   echo "$os"
 }
-
-STRAP_OS="$(strap::os::category)"
+readonly STRAP_OS="$(strap::os::category)"
 
 strap::semver::version() {
 
@@ -53,9 +52,9 @@ strap::os::version() {
   strap::semver::version "$1" "$version"
 }
 
-STRAP_OS_VERSION="$(strap::os::version)"
-STRAP_OS_VERSION_MAJOR="$(strap::os::version -M)"
-STRAP_OS_VERSION_MINOR="$(strap::os::version -m)"
-STRAP_OS_VERSION_PATCH="$(strap::os::version -p)"
+readonly STRAP_OS_VERSION="$(strap::os::version)"
+readonly STRAP_OS_VERSION_MAJOR="$(strap::os::version -M)"
+readonly STRAP_OS_VERSION_MINOR="$(strap::os::version -m)"
+readonly STRAP_OS_VERSION_PATCH="$(strap::os::version -p)"
 
 set +a

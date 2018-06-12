@@ -75,35 +75,37 @@ exit_if_missing() {
   fi
 }
 
-export STRAP_SCRIPT="$(strap::fs::path "${BASH_SOURCE[0]}")"
-export STRAP_WORKING_DIR="$(pwd)"
+declare -rx STRAP_SCRIPT="$(strap::fs::path "${BASH_SOURCE[0]}")"
+declare -rx STRAP_WORKING_DIR="$(pwd)"
 
-# strap installation directory:
+# strap installation directory constants:
 STRAP_HOME="${STRAP_HOME:-}"
 if [[ -z "$STRAP_HOME" ]]; then
   strap_script_dir="$(dirname "$STRAP_SCRIPT")"
   STRAP_HOME="$(strap::fs::path "$strap_script_dir/..")"
 fi
-export STRAP_HOME
-export STRAP_LIB_DIR="$STRAP_HOME/lib"
-export STRAP_PLUGINS_DIR="$STRAP_HOME/plugins"
-export STRAP_COMMANDS_DIR="$STRAP_HOME/commands"
+declare -rx STRAP_HOME
+declare -rx STRAP_LIB_DIR="$STRAP_HOME/lib"
+declare -rx STRAP_PLUGINS_DIR="$STRAP_HOME/plugins"
+declare -rx STRAP_CMD_DIR="$STRAP_HOME/cmd"
 
-# user-specific strap home base:
+# user-specific constants:
+declare -rx STRAP_USER="$(logname)"
 STRAP_USER_HOME="${STRAP_USER_HOME:-}"
 [[ -z "$STRAP_USER_HOME" ]] && STRAP_USER_HOME="$(strap::fs::path "$HOME/.strap")"
-export STRAP_USER_HOME
+declare -rx STRAP_USER_HOME
 mkdir -p "$STRAP_USER_HOME"
 
-exit_if_missing "$STRAP_HOME" "STRAP_HOME"
-exit_if_missing "$STRAP_LIB_DIR" "STRAP_LIB_DIR"
-exit_if_missing "$STRAP_PLUGINS_DIR" "STRAP_PLUGINS_DIR"
-exit_if_missing "$STRAP_COMMANDS_DIR" "STRAP_COMMANDS_DIR"
+exit_if_missing "$STRAP_HOME" STRAP_HOME
+exit_if_missing "$STRAP_LIB_DIR" STRAP_LIB_DIR
+exit_if_missing "$STRAP_PLUGINS_DIR" STRAP_PLUGINS_DIR
+exit_if_missing "$STRAP_CMD_DIR" STRAP_CMD_DIR
+unset -f exit_if_missing
 
 # treat strap itself as a plugin until other plugins are loaded:
 export STRAP_PLUGIN_HOME="$STRAP_HOME"
 export STRAP_PLUGIN_LIB_DIR="$STRAP_LIB_DIR"
-export STRAP_PLUGIN_COMMANDS_DIR="$STRAP_COMMANDS_DIR"
+export STRAP_PLUGIN_CMD_DIR="$STRAP_CMD_DIR"
 export STRAP_PLUGIN_PLUGINS_DIR="$STRAP_PLUGINS_DIR"
 
 . "$STRAP_LIB_DIR/lib.sh" || . ../lib/lib.sh
@@ -129,20 +131,20 @@ strap::lib::import io || . ../lib/io.sh
 command="${1:-}"
 case "$command" in
   "" | "-h" | "--help" )
-    command_script="$STRAP_COMMANDS_DIR/help"
+    command_script="$STRAP_CMD_DIR/help"
     echo -e "strap version $("$STRAP_SCRIPT" version)\n$("$command_script")"
     ;;
   "-v" | "--version" )
     echo -e "strap version $("$STRAP_SCRIPT" version)"
     ;;
   * )
-    command_script="$STRAP_COMMANDS_DIR/$command"
+    command_script="$STRAP_CMD_DIR/$command"
     if [ ! -f "$command_script" ]; then
       echo "strap: no such command \`$command'" >&2
       exit 1
     fi
 
     shift 1
-    exec "$command_script" "$@"
+    "$command_script" "$@"
     ;;
 esac
