@@ -199,11 +199,6 @@ if [ ! -f "$STRAP_SHELL_INIT_FILE" ]; then
 fi
 strap::ok
 
-file="$HOME/.bash_profile"
-strap::running "Checking ~/.bash_profile exists"
-[ ! -f "$file" ] && strap::action "Creating ~/.bash_profile" && touch "$file"
-strap::ok
-
 declare -a files=("$HOME/.bashrc" "$HOME/.zshrc")
 for file in "${files[@]}"; do
 
@@ -221,6 +216,11 @@ for file in "${files[@]}"; do
   fi
   strap::ok
 done
+
+file="$HOME/.bash_profile"
+strap::running "Checking ~/.bash_profile exists"
+[ ! -f "$file" ] && strap::action "Creating ~/.bash_profile" && touch "$file"
+strap::ok
 
 file="$HOME/.bash_profile"
 strap::running "Checking ~/.bashrc in ~/.bash_profile per bash user guide recommendations"
@@ -246,25 +246,15 @@ if command -v brew >/dev/null 2>&1; then
   strap::running "Checking Homebrew updates"
   brew update >/dev/null
   brew upgrade
-  strap::ok
 else
   strap::action "Installing Homebrew"
   yes '' | /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)";
-
-#    TODO: enable homebrew in straprc
-#    if [[ "$PATH" != *"/usr/local/bin"* ]]; then
-#      straprc_println ''
-#      straprc_println '# homebrew:begin'
-#      straprc_println 'export PATH="/usr/local/bin:$PATH"'
-#      straprc_println '# homebrew:end'
-#      source $STRAPRC_FILE
-#    fi
-    strap::ok
 fi
+strap::ok
 
 strap::lib::import brew || source ../lib/brew.sh
 
-strap::running "Checking \$PATH entry for \"\$(brew --prefix)/bin\""
+strap::running "Checking ~/.strap/straprc check for homebrew bin \$PATH entry"
 if ! grep -q "homebrew:begin" $STRAP_SHELL_INIT_FILE; then
   strap::action "Adding ~/.strap/straprc check for homebrew bin \$PATH entry"
   file="$STRAP_HOME/etc/profile.d/homebrew.sh"

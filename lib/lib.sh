@@ -3,7 +3,7 @@
 set -Eeuo pipefail # https://vaneyckt.io/posts/safer_bash_scripts_with_set_euxo_pipefail/
 
 [[ -z "$STRAP_LIB_DIR" ]] && echo "STRAP_LIB_DIR is not set." >&2 && exit 1
-[[ -z "$STRAP_PLUGINS_DIR" ]] && echo "STRAP_PLUGINS_DIR is not set." >&2 && exit 1
+#[[ -z "$STRAP_PLUGINS_DIR" ]] && echo "STRAP_PLUGINS_DIR is not set." >&2 && exit 1
 STRAP_PLUGIN_LIB_DIR="${STRAP_PLUGIN_LIB_DIR:-}"
 STRAP_LIB_LOADED_LIBS="${STRAP_LIB_LOADED_LIBS:-}"
 
@@ -27,18 +27,18 @@ strap::lib::import() {
   # if already loaded, don't load again:
   [[ "$STRAP_LIB_LOADED_LIBS" = *"$libname"* ]] && return 0
 
-  if [[ -n "$plugin" ]]; then
-    dir="$STRAP_PLUGINS_DIR/$plugin"
-    if [[ ! -d "$dir" ]]; then
-      echo "$dir is not a valid strap plugin directory" >&2
-      return 1
-    fi
-    file="$dir/lib/$name.sh"
-    if [[ ! -f "$file" ]]; then
-      echo "strap plugin library file '$file' does not exist" >&2
-      return 1
-    fi
-  fi
+#  if [[ -n "$plugin" ]]; then
+#    dir="$STRAP_PLUGINS_DIR/$plugin"
+#    if [[ ! -d "$dir" ]]; then
+#      echo "$dir is not a valid strap plugin directory" >&2
+#      return 1
+#    fi
+#    file="$dir/lib/$name.sh"
+#    if [[ ! -f "$file" ]]; then
+#      echo "strap plugin library file '$file' does not exist" >&2
+#      return 1
+#    fi
+#  fi
 
   [[ ! -f "$file" ]] && [[ -d "$STRAP_PLUGIN_LIB_DIR" ]] && file="$STRAP_PLUGIN_LIB_DIR/$name.sh"
 

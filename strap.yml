@@ -11,3 +11,9 @@ macos:
       AppleShowAllExtensions: { value: true, restart_finder: "if-changed" }
     com.apple.finder:
       AppleShowAllFiles: { value: YES, restart_finder: "if-changed" }
+
+git:
+  config:
+    core.autocrlf: input
+    push.default: simple
+    branch.autosetupmerge: always
