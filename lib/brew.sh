@@ -12,9 +12,9 @@ STRAP_HOMEBREW_PREFIX="$(brew --prefix)"
 ! strap::path::contains "$STRAP_HOMEBREW_PREFIX/bin" && export PATH="$STRAP_HOMEBREW_PREFIX/bin:$PATH"
 
 __strap::brew::ensure_formula() {
-  local command="$1" && [ -z "$command" ] && abort 'strap::brew::ensure_formula: $1 must be the command'
-  local formula="$2" && [ -z "$formula" ] && abort 'strap::brew::ensure_formula: $2 must be the formula id'
-  local name="$3" && [ -z "$3" ] && name="$formula"
+  local command="${1:-}" && [ -z "$command" ] && abort 'strap::brew::ensure_formula: $1 must be the command'
+  local formula="${2:-}" && [ -z "$formula" ] && abort 'strap::brew::ensure_formula: $2 must be the formula id'
+  local name="${3:-}" && [ -z "$name" ] && name="$formula"
 
   strap::running "Checking $name"
   if ! ${command} list ${formula} >/dev/null 2>&1; then
@@ -24,11 +24,11 @@ __strap::brew::ensure_formula() {
   strap::ok
 }
 
-strap::brew::ensure() { __strap::brew::ensure_formula "brew" $1 $2; }
+strap::brew::ensure() { __strap::brew::ensure_formula "brew" "$@"; }
 
 strap::brew::cask::ensure() {
-  local formula="$1" && [ -z "$formula" ] && abort 'strap::brew::cask::ensure: $1 must be the formula id'
-  local apppath="$2"
+  local formula="${1:-}" && [ -z "$formula" ] && abort 'strap::brew::cask::ensure: $1 must be the formula id'
+  local apppath="${2:-}"
 
   if [ ! -z "$apppath" ] && [ -d "$apppath" ]; then
     # simulate checking message:
@@ -50,10 +50,10 @@ strap::brew::cask::ensure() {
 }
 
 strap::brew::ensure_brew_shellrc_entry() {
-  local file="$1" && [ ! -f "$file" ] && abort 'ensure_brew_shellrc_entry: $1 must be the shell rc file'
-  local formula="$2" && [ -z "$formula" ] && abort 'ensure_brew_shellrc_entry: $2 must be the formula id'
-  local path="$3" && [ -z "$path" ] && abort 'ensure_brew_shellrc_entry: $3 must be the brew script relative path'
-  local extraConditions="$4"
+  local file="${1:-}" && [ ! -f "$file" ] && abort 'ensure_brew_shellrc_entry: $1 must be the shell rc file'
+  local formula="${2:-}" && [ -z "$formula" ] && abort 'ensure_brew_shellrc_entry: $2 must be the formula id'
+  local path="${3:-}" && [ -z "$path" ] && abort 'ensure_brew_shellrc_entry: $3 must be the brew script relative path'
+  local extraConditions="${4:-}"
 
   # if extraConditions are present, ensure there is a ' && ' at the end for joining:
   [ -n "$extraConditions" ] && [[ "$extraConditions" != "* && " ]] && extraConditions="$extraConditions && "

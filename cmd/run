@@ -238,7 +238,7 @@ strap::ok
 # Homebrew:
 #############################################################
 
-strap::bot "Homebrew"
+#strap::bot "Homebrew"
 
 strap::running "Checking Homebrew"
 if command -v brew >/dev/null 2>&1; then
@@ -283,6 +283,23 @@ strap::ok
 #brew upgrade
 #logk
 
+strap::bot "Git & GitHub"
+
+strap::brew::ensure 'git'
+
+strap::running 'Checking ~/.gitconfig'
+[ -f "$HOME/.gitconfig" ] || { strap::action 'Creating ~/.gitconfig'; touch "$HOME/.gitconfig"; }
+chmod 700 "$HOME/.gitconfig"
+strap::ok
+
+strap::lib::import git || source ../lib/git.sh
+
+strap::git::config::ensure core.autocrlf input
+strap::git::config::ensure push.default simple
+strap::git::config::ensure branch.autosetupmerge always
+if git credential-osxkeychain 2>&1 | grep -q 'git.credential-osxkeychain'; then
+  strap::git::config::ensure credential.helper osxkeychain
+fi
 
 # make config/state a little more secure, just in case:
 chmod -R go-rwx "$STRAP_USER_HOME"
