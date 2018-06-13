@@ -264,6 +264,16 @@ fi
 
 strap::lib::import brew || source ../lib/brew.sh
 
+strap::running "Checking \$PATH entry for \"\$(brew --prefix)/bin\""
+if ! grep -q "homebrew:begin" $STRAP_SHELL_INIT_FILE; then
+  strap::action "Adding ~/.strap/straprc check for homebrew bin \$PATH entry"
+  file="$STRAP_HOME/etc/profile.d/homebrew.sh"
+  [[ ! -f "$file" ]] && strap::abort "Invalid strap installation. Missing file: $file"
+  echo "" >> "$STRAP_SHELL_INIT_FILE"
+  cat "$file" >> "$STRAP_SHELL_INIT_FILE"
+fi
+strap::ok
+
 #logn "Checking Homebrew Cask:"
 #if ! brew tap | grep ^caskroom/cask$ >/dev/null 2>&1; then
 #  echo && log "Tapping caskroom/cask..."
