@@ -6,11 +6,10 @@ command -v strap::lib::import >/dev/null || { echo "strap::lib::import is not av
 strap::lib::import logging || . logging.sh
 strap::lib::import path || . path.sh
 
-! strap::path::contains '/usr/local/bin' && export PATH="/usr/local/bin:$PATH"
-
 set -a
 
 STRAP_BREW_PREFIX="$(brew --prefix)"
+! strap::path::contains "$STRAP_BREW_PREFIX/bin" && export PATH="$STRAP_BREW_PREFIX/bin:$PATH"
 
 __strap::brew::ensure_formula() {
   local command="$1" && [ -z "$command" ] && abort 'strap::brew::ensure_formula: $1 must be the command'
