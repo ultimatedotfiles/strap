@@ -86,7 +86,7 @@ if [[ -z "$STRAP_HOME" ]]; then
 fi
 declare -rx STRAP_HOME
 declare -rx STRAP_LIB_DIR="$STRAP_HOME/lib"
-declare -rx STRAP_PLUGINS_DIR="$STRAP_HOME/plugins"
+#declare -rx STRAP_PLUGINS_DIR="$STRAP_HOME/plugins"
 declare -rx STRAP_CMD_DIR="$STRAP_HOME/cmd"
 
 # user-specific constants:
@@ -98,7 +98,7 @@ mkdir -p "$STRAP_USER_HOME"
 
 exit_if_missing "$STRAP_HOME" STRAP_HOME
 exit_if_missing "$STRAP_LIB_DIR" STRAP_LIB_DIR
-exit_if_missing "$STRAP_PLUGINS_DIR" STRAP_PLUGINS_DIR
+#xit_if_missing "$STRAP_PLUGINS_DIR" STRAP_PLUGINS_DIR
 exit_if_missing "$STRAP_CMD_DIR" STRAP_CMD_DIR
 unset -f exit_if_missing
 
@@ -106,7 +106,7 @@ unset -f exit_if_missing
 export STRAP_PLUGIN_HOME="$STRAP_HOME"
 export STRAP_PLUGIN_LIB_DIR="$STRAP_LIB_DIR"
 export STRAP_PLUGIN_CMD_DIR="$STRAP_CMD_DIR"
-export STRAP_PLUGIN_PLUGINS_DIR="$STRAP_PLUGINS_DIR"
+#export STRAP_PLUGIN_PLUGINS_DIR="$STRAP_PLUGINS_DIR"
 
 . "$STRAP_LIB_DIR/lib.sh" || . ../lib/lib.sh
 strap::lib::import fonts || . ../lib/fonts.sh
