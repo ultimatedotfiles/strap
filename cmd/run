@@ -297,7 +297,7 @@ strap::lib::import git || source ../lib/git.sh
 strap::git::config::ensure core.autocrlf input
 strap::git::config::ensure push.default simple
 strap::git::config::ensure branch.autosetupmerge always
-if git credential-osxkeychain 2>&1 | grep -q 'git.credential-osxkeychain'; then
+if strap::git::credential::osxkeychain::available ; then
   strap::git::config::ensure credential.helper osxkeychain
 fi
 
