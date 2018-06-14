@@ -8,8 +8,7 @@ strap::lib::import logging || . logging.sh
 set -a
 
 strap::git::credential::osxkeychain::available() {
-  local -r output="$(git credential-osxkeychain 2>&1 || true)"
-  echo "$output" | grep -q 'git.credential-osxkeychain'
+  git help -a | grep -q credential-osxkeychain
 }
 
 strap::git::config::ensure() {
