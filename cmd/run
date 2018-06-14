@@ -293,12 +293,38 @@ chmod 700 "$HOME/.gitconfig"
 strap::ok
 
 strap::lib::import git || source ../lib/git.sh
+strap::lib::import github || source ../lib/github.sh
 
 strap::git::config::ensure core.autocrlf input
 strap::git::config::ensure push.default simple
 strap::git::config::ensure branch.autosetupmerge always
 if strap::git::credential::osxkeychain::available ; then
   strap::git::config::ensure credential.helper osxkeychain
+fi
+
+strap::running "Checking GitHub username"
+strap::github::user::ensure
+strap::ok
+github_username="$(strap::github::user::get)"
+
+strap::running "Checking GitHub API Token"
+github_token="$(strap::github::token::find "$github_username")"
+if [[ -n "$github_token" ]]; then
+  strap::ok
+  strap::running "Checking GitHub API Token validity"
+  if ! strap::github::api::token::is_valid "$github_token"; then
+    strap::action "Deleting invalid GitHub token from local storage."
+    strap::github::token::delete
+    github_token='' # clear to ensure a new one is created next
+  fi
+  strap::ok
+fi
+if [[ -z "$github_token" ]]; then
+  strap::action "Creating new GitHub API Token"
+  strap::github::api::token::create "$github_username"
+  github_token="$(strap::github::token::find "$github_username")"
+  [[ -z "$github_token" ]] && strap::abort "Unable to obtain newly-created GitHub API token"
+  strap::ok
 fi
 
 # make config/state a little more secure, just in case:

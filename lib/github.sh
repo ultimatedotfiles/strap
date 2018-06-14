@@ -11,6 +11,25 @@ strap::lib::import git || . git.sh
 __STRAP_GITHUB_USER_JSON="${__STRAP_GITHUB_USER_JSON:-}"
 __STRAP_GITHUB_USER_EMAILS_JSON="${__STRAP_GITHUB_USER_EMAILS_JSON:-}"
 
+strap::github::user::ensure() {
+
+  local github_username="$(git config --global github.user || true)"
+
+  if [[ -z "$github_username" ]]; then
+    echo
+    strap::readval github_username "Enter your GitHub username" false true
+    git config --global github.user "$github_username" || strap::abort "Unable to save GitHub username to git config"
+  fi
+}
+
+strap::github::user::get() {
+  git config --global github.user || strap::abort "GitHub username is not available in git config"
+}
+
+strap::github::token::delete() {
+  printf "protocol=https\nhost=github.com\n" | git credential-osxkeychain erase >/dev/null # clear any previous value
+}
+
 strap::github::token::save() {
   local -r username="${1:-}" && [[ -z "$username" ]] && strap::error 'strap::github::token::find: $1 must be a github username' && return 1
   local -r token="${2:-}" && [[ -z "$token" ]] && strap::error 'strap::github::token::find: $2 must be a github api token' && return 1
@@ -44,7 +63,7 @@ strap::github::token::find() {
          strap::github::token::save "$username" "$token"
 
          # remove from the legacy location:
-         security delete-internet-password -a "$username" -s api.github.com -l "$label"
+         security delete-internet-password -a "$username" -s api.github.com -l "$label" 2>&1 >/dev/null
       fi
 
     fi
@@ -65,7 +84,7 @@ strap::github::api::request() {
 
   if [[ "$status_code" == "200" ]]; then
     echo "$body"
-  elif [[ "$status_code" == "4*" ]]; then
+  elif [[ "$status_code" == 4* ]]; then
     return 1
   else
     strap::error "Unexpected GitHub API response:"
@@ -79,26 +98,90 @@ strap::github::api::request() {
 strap::github::api::token::create() {
 
   local -r username="${1:-}" && [[ -z "$username" ]] && strap::error 'strap::github::token::find: $1 must be a github username' && return 1
-  local -r utc_date="$(date -u +%FT%TZ)"
+  local -r max_password_attempts=3
+  local -r max_otp_attempts=3
+  local password_attempts=0
+  local otp_attempts=0
+
+  local utc_date=
+  local request_body=
+  local token=
+  local creds=
   local password=
-  strap::readval password "Enter (or cmd-v paste) your GitHub password" true
+  local two_factor_code=
+  local response=
+  local status_code=
+  local headers=
+  local body=
+  local retry_ask=
 
-  local -r request_body="{\"scopes\":[\"repo\",\"admin:org\",\"admin:public_key\",\"admin:repo_hook\",\"admin:org_hook\",\"gist\",\"notifications\",\"user\",\"delete_repo\",\"admin:gpg_key\"],\"note\":\"Strap-generated token, created at $utc_date\"}"
-  local -r creds="$username:$password"
-  local response="$(curl --silent --show-error -i -u "$creds" -H "Content-Type: application/json" -X POST -d "$request_body" https://api.github.com/authorizations)"
+  while [[ -z "$token" && ${password_attempts} < ${max_password_attempts} ]]; do
 
-  status_code="$(echo "$response" | grep 'HTTP/1.1' | awk '{print $2}')" && [[ -z "$status_code" ]] && strap::abort "Unable to parse GitHub response status.  GitHub response format is likely to have changed.  Please report this to the Strap developers."
-  otp_type="$(echo "$response" | grep 'X-GitHub-OTP:' | awk '{print $3}')"
+    echo
+    strap::readval password "Enter (or cmd-v paste) your GitHub password" true
+    creds="$username:$password"
 
-  if [[ -n "$otp_type" ]]; then # two-factor required - ask for code:
-    local two_factor_code=
-    strap::readval two_factor_code "Enter GitHub two-factor code"
-    #try again, this time with the OTP code:
-    response="$(curl --silent --show-error -u "$creds" -H "X-GitHub-OTP: $two_factor_code" -H "Content-Type: application/json" -X POST -d "$request_body" https://api.github.com/authorizations)"
+    utc_date="$(date -u +%FT%TZ)"
+    request_body="{\"scopes\":[\"repo\",\"admin:org\",\"admin:public_key\",\"admin:repo_hook\",\"admin:org_hook\",\"gist\",\"notifications\",\"user\",\"delete_repo\",\"admin:gpg_key\"],\"note\":\"Strap-generated token, created at $utc_date\"}"
+    response="$(curl --silent --show-error -i -u "$creds" -H 'Content-Type: application/json' -X POST -d "$request_body" https://api.github.com/authorizations)"
+    status_code="$(echo "$response" | head -1 | awk '{print $2}')"
+    headers="$(echo "$response" | sed "/^\s*$(printf '\r')*$/q" | sed '/^[[:space:]]*$/d' | tail -n +2)"
+    body="$(echo "$response" | sed "1,/^\s*$(printf '\r')*$/d")"
+    token="$(echo "$body" | jq -r '.token // empty')"
+
+    password_attempts=$((password_attempts + 1))
+
+    [[ -z "$status_code" ]] && strap::abort "Unable to parse GitHub response status.  GitHub response format is likely to have changed.  Please report this to the Strap developers."
+
+    if [[ ${status_code} -eq 401 ]]; then
+
+      if echo "$headers" | grep -q 'X-GitHub-OTP: required'; then # password correct but two-factor is required
+
+        # the password was correct, so set the attempts equal to max to prevent looping through again:
+        password_attempts=${max_password_attempts}
+
+        while [[ -z "$token" && ${otp_attempts} < ${max_otp_attempts} ]]; do
+
+          echo
+          strap::readval two_factor_code "Enter GitHub two-factor code"
+
+          #try again with the OTP code:
+          utc_date="$(date -u +%FT%TZ)"
+          request_body="{\"scopes\":[\"repo\",\"admin:org\",\"admin:public_key\",\"admin:repo_hook\",\"admin:org_hook\",\"gist\",\"notifications\",\"user\",\"delete_repo\",\"admin:gpg_key\"],\"note\":\"Strap-generated token, created at $utc_date\"}"
+          response="$(curl --silent --show-error -i -u "$creds" -H "X-GitHub-OTP: $two_factor_code" -H 'Content-Type: application/json' -X POST -d "$request_body" https://api.github.com/authorizations)"
+          status_code="$(echo "$response" | head -1 | awk '{print $2}')"
+          headers="$(echo "$response" | sed "/^\s*$(printf '\r')*$/q" | sed '/^[[:space:]]*$/d' | tail -n +2)"
+          body="$(echo "$response" | sed "1,/^\s*$(printf '\r')*$/d")"
+          token="$(echo "$body" | jq -r '.token // empty')"
+
+          otp_attempts=$((otp_attempts + 1))
+
+          if [[ -z "$token" ]]; then
+            retry_ask=''
+            [[ ${otp_attempts} < ${max_otp_attempts} ]] && retry_ask=' Please try again.'
+            strap::error "GitHub rejected the specified two-factor code (perhaps due to a typo or it expired at the last second?).$retry_ask"
+          fi
+        done
+      else
+        retry_ask=''
+        [[ ${password_attempts} < ${max_password_attempts} ]] && retry_ask=' Please try again.'
+        strap::error "GitHub rejected the specified password (perhaps due to a typo?).$retry_ask"
+      fi
+
+    fi
+
+  done
+
+  if [[ -z "$token" ]]; then
+    #default message if attempts weren't exceeded:
+    local msg="Unable to parse GitHub response API Token. GitHub response format may have changed. Please report this to the Strap developers.  GitHub HTTP response: $response"
+    if [[ "$otp_attempts" == "$max_otp_attempts" ]]; then
+      msg="Reached maximum number of two-factor attempts. Please ensure you're using the correct two-factor application for the '$username' GitHub account."
+    elif [[ "$password_attempts" == "$max_password_attempts" ]]; then
+      msg="Reached the maximum number of GitHub password attempts. Please locate the correct password for the '$username' GitHub account and then run Strap again"
+    fi
+    strap::abort "$msg"
   fi
-
-  local token="$(echo "$response" | grep '^  "token": ' | sed 's/,//' | sed 's/"//g' | awk '{print $2}')"
-  [[ -z "$token" ]] && strap::abort "Unable to parse GitHub response API Token.  GitHub response format may have changed.  Please report this to the Strap developers.  GitHub HTTP response: $response"
 
   # we have a token now - save it to secure storage:
   strap::github::token::save "$username" "$token"

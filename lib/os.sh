@@ -23,9 +23,12 @@ readonly STRAP_OS="$(strap::os::category)"
 
 strap::semver::version() {
 
-  local flags major minor patch
-  local version="$1"
-  [[ -n "$2" ]] && version="$2" && [[ "$1" == "-"* ]] && flags="$1"
+  local flags=
+  local major=
+  local minor=
+  local patch=
+  local version="${1:-}"
+  [[ -n "${2:-}" ]] && version="$2" && [[ "${1:-}" == "-"* ]] && flags="${1:-}"
   [[ -z "$version" ]] && strap::error "strap::semver::version requires a version argument" && return 1
 
   if [[ -n "$flags" ]]; then
@@ -44,12 +47,13 @@ _EOF_
 }
 
 strap::os::version() {
+  local flags="${1:-}"
   local version
   case "$STRAP_OS" in
     mac) version="$(sw_vers -productVersion)" ;;
     *) echo "unsupported os" >&2 && return 1 ;;
   esac
-  strap::semver::version "$1" "$version"
+  strap::semver::version "$flags" "$version"
 }
 
 readonly STRAP_OS_VERSION="$(strap::os::version)"

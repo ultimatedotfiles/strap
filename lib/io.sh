@@ -44,9 +44,9 @@ set -Eeuo pipefail # https://vaneyckt.io/posts/safer_bash_scripts_with_set_euxo_
 ##
 strap::readval() {
   local result=$1
-  local prompt="$2" && [ -z "$prompt" ] && prompt="Enter value" #default value
-  local secure=$3
-  local confirm=$4 && [ -z "$confirm" ] && [ "$secure" = true ] && confirm=true
+  local prompt="${2:-}" && [ -z "$prompt" ] && prompt="Enter value" #default value
+  local secure="${3:-}"
+  local confirm="${4:-}" && [ -z "$confirm" ] && [ "$secure" = true ] && confirm=true
   local first=""
   local second=""
 
