@@ -286,6 +286,7 @@ strap::ok
 strap::bot "Git & GitHub"
 
 strap::brew::ensure 'git'
+strap::brew::ensure 'jq' # needed for parsing github responses
 
 strap::running 'Checking ~/.gitconfig'
 [ -f "$HOME/.gitconfig" ] || { strap::action 'Creating ~/.gitconfig'; touch "$HOME/.gitconfig"; }
@@ -326,6 +327,8 @@ if [[ -z "$github_token" ]]; then
   [[ -z "$github_token" ]] && strap::abort "Unable to obtain newly-created GitHub API token"
   strap::ok
 fi
+
+#echo "user's github email: $(strap::github::api::user::email "$github_token")"
 
 # make config/state a little more secure, just in case:
 chmod -R go-rwx "$STRAP_USER_HOME"

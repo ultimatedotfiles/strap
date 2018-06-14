@@ -208,5 +208,5 @@ strap::github::api::user::email() {
 
   export __STRAP_GITHUB_USER_EMAILS_JSON="$body"
 
-  echo "$body" | jq -er '.[] | select(.primary == true) | .email'
+  echo "$body" | jq -r '.[] | select(.primary == true) | .email // empty'
 }
