@@ -116,7 +116,7 @@ strap::github::api::token::create() {
   local body=
   local retry_ask=
 
-  local -r machine_desc="$(strap::os::model | sed -e 's/"/\\"/')" # JSON-escape any double-quotes
+  local -r machine_desc="$(strap::os::model)"
 
   while [[ -z "$token" && ${password_attempts} < ${max_password_attempts} ]]; do
 

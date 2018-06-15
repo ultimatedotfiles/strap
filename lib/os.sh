@@ -67,7 +67,7 @@ strap::os::model::mac() {
 
   local file='/System/Library/PrivateFrameworks/ServerInformation.framework/Versions/A/Resources/English.lproj/SIMachineAttributes.plist'
   if [ -f "$file" ]; then
-    desc="${desc}$(defaults read "$file" "$model_id" | grep 'marketingModel' | awk -F' = ' '{print $NF}' | sed -e 's/^"//' -e 's/";$//' -e 's/\\\\//') "
+    desc="${desc}$(defaults read "$file" "$model_id" | grep 'marketingModel' | awk -F' = ' '{print $NF}' | sed -e 's/^"//' -e 's/";$//' -e 's/\\\\\"/-inch/') "
   fi
 
   desc="${desc}$proc_speed $proc_name)"
