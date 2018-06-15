@@ -56,6 +56,32 @@ strap::os::version() {
   strap::semver::version "$flags" "$version"
 }
 
+strap::os::model::mac() {
+  local hardware_overview="$(system_profiler SPHardwareDataType)"
+  local model_name="$(echo "$hardware_overview" | grep 'Model Name' | awk -F': ' '{print $NF}')"
+  local model_id="$(echo "$hardware_overview" | grep 'Model Identifier' | awk -F': ' '{print $NF}')"
+  local proc_name="$(echo "$hardware_overview" | grep 'Processor Name' | awk -F': ' '{print $NF}')"
+  local proc_speed="$(echo "$hardware_overview" | grep 'Processor Speed' | awk -F': ' '{print $NF}')"
+  local serial_number="$(echo "$hardware_overview" | grep 'Serial Number' | awk -F': ' '{print $NF}')"
+  local desc="$model_name serial number $serial_number ("
+
+  local file='/System/Library/PrivateFrameworks/ServerInformation.framework/Versions/A/Resources/English.lproj/SIMachineAttributes.plist'
+  if [ -f "$file" ]; then
+    desc="${desc}$(defaults read "$file" "$model_id" | grep 'marketingModel' | awk -F' = ' '{print $NF}' | sed -e 's/^"//' -e 's/";$//' -e 's/\\\\//') "
+  fi
+
+  desc="${desc}$proc_speed $proc_name)"
+
+  echo "$desc"
+}
+
+strap::os::model() {
+  case "$STRAP_OS" in
+    mac) echo "$(strap::os::model::mac)" ;;
+    *) echo "UNKNOWN" ;;
+  esac
+}
+
 readonly STRAP_OS_VERSION="$(strap::os::version)"
 readonly STRAP_OS_VERSION_MAJOR="$(strap::os::version -M)"
 readonly STRAP_OS_VERSION_MINOR="$(strap::os::version -m)"
