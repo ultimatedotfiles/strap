@@ -331,6 +331,8 @@ strap::bot "SSH"
 
 strap::brew::ensure openssl
 
+strap::lib::import ssh || source ../lib/ssh.sh
+
 dir="$HOME/.ssh"
 strap::fs::dir::ensure "$dir" 700 "~/.ssh"
 strap::fs::file::ensure "$dir/authorized_keys" 600 "~/.ssh/authorized_keys"
@@ -381,6 +383,8 @@ ssh_key="$dir/id_rsa"
 ssh_pub_key="${ssh_key}.pub"
 ssh_key_created=false
 
+strap::ssh::idrsa::passphrase::ensure
+
 strap::running "Checking ~/.ssh/id_rsa keypair"
 if [ ! -f "$ssh_key" ]; then
 
@@ -391,7 +395,9 @@ if [ ! -f "$ssh_key" ]; then
 
   [ -z "$STRAP_GIT_EMAIL" ] && readval STRAP_GIT_EMAIL "Enter your email address" false true
 
-  ssh_key_passphrase="$(openssl rand 48 -base64)"
+  strap::action "Creating ~/.ssh/id_rsa keypair"
+
+  ssh_key_passphrase="$(strap::ssh::idrsa::passphrase::get)"
 
   ssh-keygen -t rsa -b 4096 -C "Strap auto-generated RSA key for $STRAP_GIT_EMAIL" -P "$ssh_key_passphrase" -f "$ssh_key" -q
 

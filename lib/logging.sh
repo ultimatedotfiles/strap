@@ -38,6 +38,16 @@ strap::error() {
 strap::abort() {
   local msg="${1:-}"
   [[ -n "$msg" ]] && strap::error "$msg"
+  local -r stack_depth="${#FUNCNAME[@]}"
+  local i=0
+  while [[ $i < $stack_depth ]]; do
+    stack_line="$(caller $i)"
+    func_name="$(echo $stack_line | awk '{print $2}')"
+    source_file="$(echo $stack_line | awk '{print $3}')"
+    line_number="$(echo $stack_line | awk '{print $1}')"
+    strap::error "    at ${FONT_LIGHT_SKYBLUE_1}${func_name}${FONT_CLEAR} (${FONT_LIGHT_STEEL_BLUE_1}${source_file}${FONT_CLEAR}:${FONT_SKYBLUE_2}${line_number}${FONT_CLEAR})"
+    ((i++))
+  done
   exit 1
 }
 

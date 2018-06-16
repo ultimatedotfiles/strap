@@ -4,13 +4,14 @@ set -Eeuo pipefail # https://vaneyckt.io/posts/safer_bash_scripts_with_set_euxo_
 
 command -v strap::lib::import >/dev/null || { echo "strap::lib::import is not available" >&2; exit 1; }
 strap::lib::import logging || . logging.sh
+strap::lib::import lang || . lang.sh
 
 set -a
 
 strap::fs::chmod() {
 
-  local chmod="${1:-}" && [[ -z "$chmod" ]] && strap::abort 'strap::fs::chmod: $1 must be the chmod mode'
-  local target="${2:-}" && [[ -z "$target" ]] && strap::abort 'strap::fs::chmod: $2 must be the chmod target'
+  local chmod="${1:-}" && strap::assert "$chmod" '$1 must be the chmod mode'
+  local target="${2:-}" && strap::assert "$target" '$2 must be the chmod target'
   local name="${3:-}" && [[ -z "$name" ]] && name="$target"
 
   strap::running "Ensuring chmod $chmod on $name"

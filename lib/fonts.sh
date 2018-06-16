@@ -10,6 +10,8 @@ set -Eeuo pipefail # https://vaneyckt.io/posts/safer_bash_scripts_with_set_euxo_
 
 set -a
 
+# Color names here are from https://jonasjacek.github.io/colors/
+
 FONT_BLACK="$(tput setaf 0)"
 FONT_MAROON="$(tput setaf 1)"
 FONT_GREEN="$(tput setaf 2)"
@@ -29,10 +31,25 @@ FONT_WHITE="$(tput setaf 15)"
 
 FONT_DARK_BLUE="$(tput setaf 18)"
 FONT_DODGER_BLUE_3="$(tput setaf 26)"
+FONT_BLUE_VIOLET="$(tput setaf 57)"
 FONT_MEDIUM_PURPLE_4="$(tput setaf 60)"
 FONT_SLATE_BLUE_3="$(tput setaf 61)"
 FONT_CORNFLOWER_BLUE="$(tput setaf 69)"
 FONT_SKYBLUE_2="$(tput setaf 111)"
+FONT_LIGHT_SKYBLUE_1="$(tput setaf 153)"
+FONT_DEEP_PINK_3="$(tput setaf 161)"
+FONT_GOLD_3="$(tput setaf 178)"
+FONT_LIGHT_STEEL_BLUE_1="$(tput setaf 189)"
+FONT_DARK_SEA_GREEN="$(tput setaf 193)"
+FONT_RED_1="$(tput setaf 196)"
+FONT_ORANGE_RED_1="$(tput setaf 202)"
+FONT_ORANGE_1="$(tput setaf 214)"
+FONT_GOLD_1="$(tput setaf 220)"
+FONT_LIGHT_GOLDENROD_2="$(tput setaf 221)"
+FONT_LIGHT_GOLDENROD_1="$(tput setaf 227)"
+FONT_KHAKI_1="$(tput setaf 228)"
+FONT_WHEAT_1="$(tput setaf 229)"
+FONT_CORNSILK_1="$(tput setaf 230)"
 FONT_GRAY_93="$(tput setaf 255)"
 
 FONT_BOLD="$(tput bold)"

@@ -4,6 +4,7 @@ set -Eeuo pipefail # https://vaneyckt.io/posts/safer_bash_scripts_with_set_euxo_
 
 command -v strap::lib::import >/dev/null || { echo "strap::lib::import is not available" >&2; exit 1; }
 strap::lib::import logging || . logging.sh
+strap::lib::import lang || . lang.sh
 strap::lib::import io || . io.sh
 strap::lib::import os || . os.sh
 strap::lib::import git || . git.sh
@@ -135,7 +136,7 @@ strap::github::api::token::create() {
 
     password_attempts=$((password_attempts + 1))
 
-    [[ -z "$status_code" ]] && strap::abort "Unable to parse GitHub response status.  GitHub response format is likely to have changed.  Please report this to the Strap developers."
+    strap::assert "$status_code" 'Unable to parse GitHub response status.  GitHub response format is likely to have changed.  Please report this to the Strap developers.'
 
     if [[ ${status_code} -eq 401 ]]; then
 
