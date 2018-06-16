@@ -410,8 +410,6 @@ strap::ok
 strap::fs::file::ensure "$ssh_key" 400 "~/.ssh/id_rsa"
 strap::fs::file::ensure "$ssh_pub_key" 400 "~/.ssh/id_rsa.pub"
 
-strap::brew::cask::ensure iTerm '/Applications/iTerm.app'
-
 # make config/state a little more secure, just in case:
 chmod -R go-rwx "$STRAP_USER_HOME"
 
