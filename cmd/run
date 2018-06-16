@@ -59,10 +59,6 @@ trap 'cleanup' EXIT
 
 echo -e "\n${FONT_BOLD}Bootstrapping your machine. Here we go!${FONT_CLEAR}\n"
 
-#abort() { STRAP_STEP="";   echo "!!! $*" >&2; exit 1; }
-#log()   { STRAP_STEP="$*"; echo "--> $*"; }
-#logn()  { STRAP_STEP="$*"; printf -- "--> $* "; }
-
 println() {
   local file="${1:-}"
   local msg="${2:-}"
@@ -165,7 +161,7 @@ xcode_license() {
       sudo xcodebuild -license
       strap::ok
     else
-      abort "Run 'sudo xcodebuild -license' to agree to the Xcode license."
+      strap::abort "Run 'sudo xcodebuild -license' to agree to the Xcode license."
     fi
   fi
 }
@@ -258,24 +254,24 @@ if ! grep -q "homebrew:begin" $STRAP_SHELL_INIT_FILE; then
 fi
 strap::ok
 
-#logn "Checking Homebrew Cask:"
+#strap::running "Checking Homebrew Cask:"
 #if ! brew tap | grep ^caskroom/cask$ >/dev/null 2>&1; then
-#  echo && log "Tapping caskroom/cask..."
+#  strap::action "Tapping caskroom/cask"
 #  brew tap caskroom/cask
 #fi
-#logk
+#strap::ok
 #
-#logn "Checking Homebrew Versions:"
+#strap::running "Checking Homebrew Versions:"
 #if ! brew tap | grep ^caskroom/versions$ >/dev/null 2>&1; then
-#  echo && log "Tapping caskroom/versions..."
+#  strap::running "Tapping caskroom/versions..."
 #  brew tap caskroom/versions
 #fi
-#logk
+#strap::ok
 #
-#logn "Checking Homebrew updates:"
+#strap::running "Checking Homebrew updates:"
 #brew update >/dev/null
 #brew upgrade
-#logk
+#strap::ok
 
 #############################################################
 # Homebrew:
@@ -413,6 +409,8 @@ strap::ok
 
 strap::fs::file::ensure "$ssh_key" 400 "~/.ssh/id_rsa"
 strap::fs::file::ensure "$ssh_pub_key" 400 "~/.ssh/id_rsa.pub"
+
+strap::brew::cask::ensure iTerm '/Applications/iTerm.app'
 
 # make config/state a little more secure, just in case:
 chmod -R go-rwx "$STRAP_USER_HOME"

@@ -31,6 +31,8 @@ FONT_DARK_BLUE="$(tput setaf 18)"
 FONT_DODGER_BLUE_3="$(tput setaf 26)"
 FONT_MEDIUM_PURPLE_4="$(tput setaf 60)"
 FONT_SLATE_BLUE_3="$(tput setaf 61)"
+FONT_CORNFLOWER_BLUE="$(tput setaf 69)"
+FONT_SKYBLUE_2="$(tput setaf 111)"
 FONT_GRAY_93="$(tput setaf 255)"
 
 FONT_BOLD="$(tput bold)"

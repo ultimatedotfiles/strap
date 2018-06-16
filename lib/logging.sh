@@ -12,7 +12,7 @@ strap::ok() {
 }
 
 strap::bot() {
-    echo -e "\n${FONT_GREEN}\[^_^]/${FONT_CLEAR} ${FONT_ULINE}${FONT_BOLD}${1:-}${FONT_CLEAR}\n"
+    echo -e "\n${FONT_BOLD}${FONT_BLUE}##${FONT_CLEAR} ${FONT_ULINE}${FONT_BOLD}${1:-}${FONT_CLEAR}\n"
 }
 
 strap::running() {
@@ -21,6 +21,10 @@ strap::running() {
 
 strap::action() {
     echo -en "\n    $FONT_BOLD$FONT_DODGER_BLUE_3 ⇒  $FONT_CLEAR$FONT_BOLD${1:-} ... "
+}
+
+strap::info() {
+    echo -e "${FONT_CORNFLOWER_BLUE}    [info]$FONT_CLEAR ${1:-}"
 }
 
 strap::warn() {
