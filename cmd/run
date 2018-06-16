@@ -13,6 +13,7 @@ command -v 'strap::lib::import' >/dev/null || { echo "strap::lib::import is not 
 strap::lib::import io || source ../lib/io.sh
 strap::lib::import logging || source ../lib/logging.sh
 strap::lib::import sudo || source ../lib/sudo.sh
+strap::lib::import fs || source ../lib/fs.sh
 
 STRAP_DEBUG="${STRAP_DEBUG:-}"
 STRAP_SCRIPT="${STRAP_SCRIPT:-}" && [[ -z "$STRAP_SCRIPT" ]] && echo "STRAP_SCRIPT is not set" && exit 1
@@ -191,20 +192,16 @@ strap::bot "Shell Init Files"
 
 STRAP_SHELL=$(basename "$SHELL")
 STRAP_SHELL_INIT_FILE="${STRAP_USER_HOME:-}/straprc"
+file="$STRAP_SHELL_INIT_FILE"
 
-strap::running "Checking $STRAP_SHELL_INIT_FILE exists"
-if [ ! -f "$STRAP_SHELL_INIT_FILE" ]; then
-  echo && strap::action "Creating $STRAP_SHELL_INIT_FILE"
-  cp "$STRAP_HOME/etc/profile.d/straprc" "$STRAP_USER_HOME/straprc"
-fi
-strap::ok
+file_existed=false && [[ -f "$file" ]] && file_existed=true
+strap::fs::file::ensure "$file" 'u+rw'
+[[ "$file_existed" != true ]] && cat "$STRAP_HOME/etc/profile.d/straprc" > "$file"
 
 declare -a files=("$HOME/.bashrc" "$HOME/.zshrc")
 for file in "${files[@]}"; do
 
-  strap::running "Checking $file exists"
-  [ ! -f "$file" ] && strap::action "Creating $file" && touch "$file"
-  strap::ok
+  strap::fs::file::ensure "$file" 'u+rw'
 
   strap::running "Checking $STRAP_SHELL_INIT_FILE referenced in $file"
   if ! grep -q "$STRAP_SHELL_INIT_FILE" "$file"; then
@@ -218,11 +215,8 @@ for file in "${files[@]}"; do
 done
 
 file="$HOME/.bash_profile"
-strap::running "Checking ~/.bash_profile exists"
-[ ! -f "$file" ] && strap::action "Creating ~/.bash_profile" && touch "$file"
-strap::ok
+strap::fs::file::ensure "$file" 'u+rw' '~/.bash_profile'
 
-file="$HOME/.bash_profile"
 strap::running "Checking ~/.bashrc in ~/.bash_profile per bash user guide recommendations"
 if ! grep -q "bashrc" "$file"; then
   println "$file" ''
@@ -238,7 +232,7 @@ strap::ok
 # Homebrew:
 #############################################################
 
-#strap::bot "Homebrew"
+strap::bot "Homebrew"
 
 strap::running "Checking Homebrew"
 if command -v brew >/dev/null 2>&1; then
@@ -283,15 +277,17 @@ strap::ok
 #brew upgrade
 #logk
 
+#############################################################
+# Homebrew:
+#############################################################
+
 strap::bot "Git & GitHub"
 
 strap::brew::ensure 'git'
 strap::brew::ensure 'jq' # needed for parsing github responses
 
-strap::running 'Checking ~/.gitconfig'
-[ -f "$HOME/.gitconfig" ] || { strap::action 'Creating ~/.gitconfig'; touch "$HOME/.gitconfig"; }
-chmod 700 "$HOME/.gitconfig"
-strap::ok
+file="$HOME/.gitconfig"
+strap::fs::file::ensure "$file" 700 "~/.gitconfig"
 
 strap::lib::import git || source ../lib/git.sh
 strap::lib::import github || source ../lib/github.sh
@@ -328,7 +324,95 @@ if [[ -z "$github_token" ]]; then
   strap::ok
 fi
 
+# TODO: grok user's email from github response and store in git config --global user.email
 #echo "user's github email: $(strap::github::api::user::email "$github_token")"
+
+#############################################################
+# SSH:
+#############################################################
+
+strap::bot "SSH"
+
+strap::brew::ensure openssl
+
+dir="$HOME/.ssh"
+strap::fs::dir::ensure "$dir" 700 "~/.ssh"
+strap::fs::file::ensure "$dir/authorized_keys" 600 "~/.ssh/authorized_keys"
+strap::fs::file::ensure "$dir/known_hosts" 600 "~/.ssh/known_hosts"
+file="$dir/config"
+strap::fs::file::ensure "$file" 600 "~/.ssh/config"
+
+if strap::semver::compare "$STRAP_OS_VERSION" '>=' '10.12.2'; then
+
+  strap::running "Checking 'Host *' entry in ~/.ssh/config"
+  file_contents="$(cat "$file")"
+  all_hosts_entry="$(echo "$file_contents" | awk '/^Host \*/{p=1}/^ *$/{p=0}p')"
+  if [[ -n "$all_hosts_entry" ]]; then
+    strap::ok
+
+    strap::running "Checking 'AddKeysToAgent' for 'Host *' entry in ~/.ssh/config"
+    if ! echo "$all_hosts_entry" | grep -q 'AddKeysToAgent'; then
+      # The 'Host *' directive doesn't have an AddKeysToAgent line - add one:
+      strap::action "Adding 'AddKeysToAgent yes' for 'Host *' entry in ~/.ssh/config"
+      file_contents="$(echo "$file_contents" | awk '1;/Host \*/{print "  AddKeysToAgent yes"}')"
+    fi
+    strap::ok
+
+    strap::running "Checking 'UseKeychain' for 'Host *' entry in ~/.ssh/config"
+    if ! echo "$all_hosts_entry" | grep -q 'UseKeychain'; then
+      # The 'Host *' directive doesn't have a UseKeychain line - add one:
+      strap::action "Adding 'UseKeychain yes' for 'Host *' entry in ~/.ssh/config"
+      file_contents="$(echo "$file_contents" | awk '1;/Host \*/{print "  UseKeychain yes"}')"
+      all_hosts_entry="$(echo "$file_contents" | awk '/^Host \*/{p=1}/^ *$/{p=0}p')"
+    fi
+    strap::ok
+
+    # persist changes:
+    echo "$file_contents" > "$file"
+
+  else # no all hosts entry - add one:
+    strap::action "Creating global 'Host *' entry in ~/.ssh/config"
+    [[ -z "$file_contents" ]] && echo '' >> "$file"
+    echo 'Host *' >> "$file"
+    echo '  UseKeychain yes' >> "$file"
+    echo '  AddKeysToAgent yes' >> "$file"
+    strap::ok
+  fi
+fi
+chmod 600 "$file"
+
+ssh_key="$dir/id_rsa"
+ssh_pub_key="${ssh_key}.pub"
+ssh_key_created=false
+
+strap::running "Checking ~/.ssh/id_rsa keypair"
+if [ ! -f "$ssh_key" ]; then
+
+  ssh_agent_pid=$(ps aux|grep '[s]sh-agent -s'|sed -E -n 's/[^[:space:]]+[[:space:]]+([[:digit:]]+).*/\1/p')
+  if [ -z "$ssh_agent_pid" ]; then
+    ssh-agent -s >/dev/null
+  fi
+
+  [ -z "$STRAP_GIT_EMAIL" ] && readval STRAP_GIT_EMAIL "Enter your email address" false true
+
+  ssh_key_passphrase="$(openssl rand 48 -base64)"
+
+  ssh-keygen -t rsa -b 4096 -C "Strap auto-generated RSA key for $STRAP_GIT_EMAIL" -P "$ssh_key_passphrase" -f "$ssh_key" -q
+
+  ssh_key_created=true
+
+  expect << EOF
+    spawn ssh-add -K $ssh_key
+    expect "Enter passphrase"
+    send "$ssh_key_passphrase\r"
+    expect eof
+EOF
+
+fi
+strap::ok
+
+strap::fs::file::ensure "$ssh_key" 400 "~/.ssh/id_rsa"
+strap::fs::file::ensure "$ssh_pub_key" 400 "~/.ssh/id_rsa.pub"
 
 # make config/state a little more secure, just in case:
 chmod -R go-rwx "$STRAP_USER_HOME"
