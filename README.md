@@ -99,7 +99,7 @@ add your company's private repository.  Any number of sources can be used during
 ## Installation
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/ultimatedotfiles/strap/master/run | bash
+curl -fsSL https://raw.githubusercontent.com/ultimatedotfiles/strap/master/install | bash
 ```
 
 Then set the following in ~/.bash_profile, ~/.bashrc or ~/.zshrc (or whatever you prefer):
