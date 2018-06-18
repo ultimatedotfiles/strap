@@ -8,18 +8,27 @@ strap::lib::import logging || . logging.sh
 
 [[ -z "$STRAP_USER" ]] && strap::abort 'STRAP_USER is not set.'
 
-STRAP_SSH_IDRSA_KEYCHAIN_SERVICE_NAME='localhost-homedir-dotssh-idrsa-passphrase'
+STRAP_SSH_IDRSA_KEYCHAIN_SERVICE_NAME='strap-idrsa-passphrase'
 
 set -a
 
+strap::ssh::idrsa::passphrase::delete() {
+  security delete-generic-password -a "${STRAP_USER}" -s "${STRAP_SSH_IDRSA_KEYCHAIN_SERVICE_NAME}" >/dev/null 2>&1 || true
+}
+
 strap::ssh::idrsa::passphrase::get() {
-  echo "$(find-generic-password -a "${STRAP_USER}" -s "${STRAP_SSH_IDRSA_KEYCHAIN_SERVICE_NAME}" -w 2>/dev/null || true)"
+  security find-generic-password -a "${STRAP_USER}" -s "${STRAP_SSH_IDRSA_KEYCHAIN_SERVICE_NAME}" -w 2>/dev/null || true
 }
 
 strap::ssh::idrsa::passphrase:save() {
   local -r passphrase="${1:-}" && strap::assert "$passphrase" '$1 must be the passphrase.'
   security add-generic-password -a "${STRAP_USER}" -s "${STRAP_SSH_IDRSA_KEYCHAIN_SERVICE_NAME}" -w "$passphrase"
 }
+
+strap::ssh::idrsa::passphrase::create() {
+  openssl rand 48 -base64
+}
+
 strap::ssh::idrsa::passphrase::ensure() {
 
   strap::running "Checking id_rsa passphrase"

@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+
+user_strap_dir="$HOME/.strap"
+mkdir -p "$user_strap_dir"
+
+releases_dir="$user_strap_dir/releases"
+mkdir -p "$releases_dir"
+
+file="$releases_dir/master.zip"
+rm -rf "$file"
+
+curl -fsSL http://github.com/ultimatedotfiles/strap/archive/master.zip -o "$file"
+
+release_dir="$releases_dir/master"
+
+rm -rf "$release_dir"
+unzip -q "$file" -d "$releases_dir"
+mv "$releases_dir/strap-master" "$release_dir"
+rm -rf "$file"
+
+rm -rf "$releases_dir/current"
+ln -s "$release_dir" "$releases_dir/current"

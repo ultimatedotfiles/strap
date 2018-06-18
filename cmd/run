@@ -397,10 +397,11 @@ if [ ! -f "$ssh_key" ]; then
 
   strap::action "Creating ~/.ssh/id_rsa keypair"
 
-  ssh_key_passphrase="$(strap::ssh::idrsa::passphrase::get)"
+  strap::ssh::idrsa::passphrase::delete # remove whatever might have existed
+  ssh_key_passphrase="$(strap::ssh::idrsa::passphrase::create)"
+  strap::ssh::idrsa::passphrase:save "$ssh_key_passphrase"
 
   ssh-keygen -t rsa -b 4096 -C "Strap auto-generated RSA key for $STRAP_GIT_EMAIL" -P "$ssh_key_passphrase" -f "$ssh_key" -q
-
   ssh_key_created=true
 
   expect << EOF
