@@ -4,13 +4,33 @@ user:
     family: Testarossa
 
 macos:
+  sudo:
+    defaults:
+      com.apple.screensaver:
+        askForPassword: 1
+        askForPasswordDelay: 0
+      /Library/Preferences/com.apple.alf:
+        globalstate: 1
+    launchctl:
+      /System/Library/LaunchDaemons/com.apple.alf.agent.plist: load
   defaults:
     NSGlobalDomain:
+      com.apple.Safari com.apple.Safari.ContentPageGroupIdentifier.WebKit2JavaEnabled: false
+      com.apple.Safari com.apple.Safari.ContentPageGroupIdentifier.WebKit2JavaEnabledForLocalFiles: false
       KeyRepeat: 2
       InitialKeyRepeat: 14
-      AppleShowAllExtensions: { value: true, restart_finder: "if-changed" }
+      AppleShowAllExtensions:
+        value: true
+        if_changed: restart_finder
     com.apple.finder:
-      AppleShowAllFiles: { value: YES, restart_finder: "if-changed" }
+      AppleShowAllFiles:
+        value: YES
+        if_changed: restart_finder
+    softwareupdate:
+      enabled: true
+
+pkgmgr:
+  upgrade: true
 
 git:
   config:

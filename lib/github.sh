@@ -40,7 +40,7 @@ strap::github::token::save() {
 
 strap::github::token::find() {
 
-  local -r username="${1:-}" && [[ -z "$username" ]] && strap::error 'strap::github::token::find: $1 must be a github username' && return 1
+  local -r username="${1:-}" && strap::assert "$username" '$1 must be a github username'
   local token=
 
   if strap::git::credential::osxkeychain::available; then
@@ -76,8 +76,8 @@ strap::github::token::find() {
 
 strap::github::api::request() {
 
-  local -r token="${1:-}" && [[ -z "$token" ]] && strap::error 'strap::github::api::request: $1 must be a github api token' && return 1
-  local -r url="${2:-}" && [[ -z "$url" ]] && strap::error 'strap::github::api::request: $2 must be a github api URL' && return 1
+  local -r token="${1:-}" && strap::assert "$token" '$1 must be a github api token'
+  local -r url="${2:-}" && strap::assert "$url" '$2 must be a github api URL'
 
   local -r response="$(curl --silent --show-error -H "Authorization: token $token" --write-out "HTTPSTATUS:%{http_code}" "$url")"
   local -r body="$(echo "$response" | sed -e 's/HTTPSTATUS\:.*//g')"
@@ -98,7 +98,7 @@ strap::github::api::request() {
 
 strap::github::api::token::create() {
 
-  local -r username="${1:-}" && [[ -z "$username" ]] && strap::error 'strap::github::token::find: $1 must be a github username' && return 1
+  local -r username="${1:-}" && strap::assert "$username" '$1 must be a github username'
   local -r max_password_attempts=3
   local -r max_otp_attempts=3
   local password_attempts=0
@@ -193,26 +193,53 @@ strap::github::api::token::create() {
   strap::github::token::save "$username" "$token"
 }
 
+strap::github::api::user() {
+
+   local json="$__STRAP_GITHUB_USER_JSON"
+
+   if [[ -z "$json" ]]; then
+      local -r token="${1:-}" && strap::assert "$token" '$1 must be a github api token'
+      json="$(strap::github::api::request "$token" 'https://api.github.com/user' || true)"
+      [[  -z "$json" ]] && return 1
+      export __STRAP_GITHUB_USER_JSON="$json"
+   fi
+
+   echo "$json"
+}
+
+strap::github::api::user::name() {
+  local -r user_json="$(strap::github::api::user)"
+  echo "$user_json"| jq -r '.name // empty'
+}
+
 strap::github::api::token::is_valid() {
+  local -r token="${1:-}" && strap::assert "$token" '$1 must be a github api token'
+  local -r json="$(strap::github::api::request "$token" 'https://api.github.com/user' || true)"
+  [[ -z "$json" ]] && return 1
+  export __STRAP_GITHUB_USER_JSON="$json"
+}
 
-  local -r token="${1:-}" && [[ -z "$token" ]] && strap::error 'strap::github::api::token::is_valid: $1 must be a github api token' && return 1
+strap::github::api::user::emails() {
 
-  local -r body="$(strap::github::api::request "$token" 'https://api.github.com/user' || true)"
+  local json="$__STRAP_GITHUB_USER_EMAILS_JSON"
 
-  [[ -z "$body" ]] && return 1
+  if [[ -z "$json" ]]; then
+    local -r token="${1:-}" && strap::assert "$token" '$1 must be a github api token'
+    json="$(strap::github::api::request "$token" 'https://api.github.com/user/emails' || true)"
+    [[  -z "$json" ]] && return 1
+    export __STRAP_GITHUB_USER_EMAILS_JSON="$json"
+  fi
 
-  export __STRAP_GITHUB_USER_JSON="$body"
+  echo "$json"
 }
 
 strap::github::api::user::email() {
-
-  local -r token="${1:-}" && [[ -z "$token" ]] && strap::error 'strap::github::api::user::email: $1 must be a github api token' && return 1
-
-  local -r body="$(strap::github::api::request "$token" 'https://api.github.com/user/emails' || true)"
-
-  [[  -z "$body" ]] && return 1
-
-  export __STRAP_GITHUB_USER_EMAILS_JSON="$body"
-
-  echo "$body" | jq -r '.[] | select(.primary == true) | .email // empty'
+  local -r token="${1:-}" && strap::assert "$token" '$1 must be a github api token'
+  local -r json="$(strap::github::api::user::emails "$token")"
+  local email="$(echo "$json" | jq -r '[.[] | select(.email | contains("users.noreply.github.com"))][0] | .email // empty')"
+  if [[ -z "$email" ]]; then
+    email="$(echo "$json" | jq -r '[.[] | select(.verified == true and .primary == true)][0] | .email // empty')"
+  fi
+  [[ -z "$email" ]] && return 1
+  echo "$email"
 }
