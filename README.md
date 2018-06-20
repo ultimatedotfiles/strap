@@ -1,8 +1,6 @@
 # Strap: The Ultimate Dotfiles Framework
 
-## NOTE: WORK IN PROGRESS
-
-Strap is currently being ported from a previous version.  It currently works, but it doesn't install very much.  Yet.
+> **_NOTE:_**  Strap is currently being ported from a previous version.  It currently works, but it doesn't install very much.  Yet.
 
 `strap` is a dotfiles framework that is designed to do one thing extremely well: 
 
@@ -16,7 +14,28 @@ productive in *minutes* after they receive their machine instead of the hours or
 isn't limited to software engineering needs - anyone can use Strap to install what they want - graphics software, 
 video editing, web browsers, whatever.
 
-## How Does Strap Work?
+## Watch It Run!
+
+Here's a little `strap run` to whet your appetite for the things Strap can do for you:
+
+[![asciicast](https://asciinema.org/a/188040.png)](https://asciinema.org/a/188040)
+
+
+## Installation
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/ultimatedotfiles/strap/master/install | bash
+```
+
+Then set the following in ~/.bash_profile, ~/.bashrc or ~/.zshrc (or whatever you prefer):
+
+```bash
+export PATH="$HOME/.strap/releases/current/bin:$PATH"
+```
+
+## Overview
+
+How does strap work?
 
 ### It's Just Bash, Man
 
@@ -95,18 +114,6 @@ private git repositories (assuming your GitHub user account has access to said r
 
 You can even mix and match repositories: use Strap's defaults, then add in your personal public repository and also 
 add your company's private repository.  Any number of sources can be used during a strap run for machine convergence.
-
-## Installation
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/ultimatedotfiles/strap/master/install | bash
-```
-
-Then set the following in ~/.bash_profile, ~/.bashrc or ~/.zshrc (or whatever you prefer):
-
-```bash
-export PATH="$HOME/.strap/releases/current/bin:$PATH"
-```
 
 ## Usage
 
