@@ -16,7 +16,7 @@ video editing, web browsers, whatever.
 
 ## Watch It Run!
 
-Here's a little `strap run` to whet your appetite for the things Strap can do for you:
+Here's a little `strap run` recording to whet your appetite for the things Strap can do for you:
 
 [![asciicast](https://asciinema.org/a/188040.png)](https://asciinema.org/a/188040)
 
@@ -52,19 +52,19 @@ can install and use ksh or any other shell you prefer.
 Don't worry, we're not re-inventing the wheel.
  
 Strap is mostly a set of really convenient wrapper functions
-and commands built on top of homebrew.  Strap fills a really important gap: while homebrew is specifically concerned with 
-managing packages on your machine, Strap leverages that and adds user and machine-specific configuration after those 
-packages have been installed.
+and commands built on top of homebrew.  Strap fills a really important gap: while homebrew is primarily concerned with 
+managing packages on your machine, Strap leverages that and also enables user and machine-specific configuration for 
+those packages.
 
 For example, you might have installed a homebrew package and then in its output, that package says something like:
 
-'After this is installed, modify your ~/.bash_profile or ~/.zsh to include the following init line...'
+> After this is installed, modify your ~/.bash_profile or ~/.zshrc to include the following init line...
 
 Well, that's nice, but shouldn't that part be automated too?  Also what about operating system default configuration?
 That's not a software package, it's configuration, and homebrew mostly doesn't address those concerns.  But Strap does.
 
-Strap is homebrew + automating 'the last mile' to get you to a perfectly configured machine without
-having to work. It is literally "I want to use one command and that's it.  If you need something from me, 
+Strap is homebrew + automating 'the last mile' to get you to an ideally-configured machine without
+having to work. It is basically: "I want to use one command and that's it.  If you need something from me, 
 prompt me, but don't make me do any work at all beyond that."  Now that's what we're talking about!
 
 ### Declarative Configuration
@@ -133,3 +133,103 @@ commands:
 See `strap help <command>' for information on a specific command.
 For full documentation, see: https://github.com/ultimatedotfiles/strap
 ```
+
+The `strap` command itself is quite simple - it basically loads some common environment settings and that's pretty 
+much it. From there, it delegates most functionality to sub-commands, very similar to how the `git` command-line tool 
+works.  The sub-commands available to you are the combined set of Strap's built-in sub-commands and any sub-commands 
+made available by any Strap plugins you reference.
+
+## Plugins
+
+Strap is designed to have a lean core with most functionality coming from plugins.  This section explains what plugins
+are, how to use them, and how to write your own plugin(s) if you want to add or extend Strap functionality.
+
+### What is a Strap Plugin?
+
+A strap plugin is first and foremost just a git repository that conforms to a file structure that Strap can 
+understand.  This means Strap can pull in functionality from anywhere it can access a git repository via a simple
+`git clone` command based on the plugin's unique identifier.
+
+#### Strap Plugin Identifier
+
+A Strap plugin identifier is a globally-unique string that uniquely identifies a specific plugin's source.
+
+The plugin identifier string format MUST adhere to the following format:
+
+    strap-plugin-id = git-protocol-uri[@version]
+
+where:
+  * `git-protocol-uri` equals a [Git Protocol URI](https://git-scm.com/book/en/v2/Git-on-the-Server-The-Protocols)
+  * `@version` is an optional version designation suffix starting with the string literal `@` followed by a `version`
+    string. The `version` string MUST:
+    * equal a tag name in the specified git repository identified by `git-protocol-uri`
+    * conform to the semantic version name scheme defined in the
+      [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html) specification.
+
+##### Strap Plugin Identifier with a `@version`
+
+Example:
+
+    https:://github.com/acme/hello@1.0.2
+    
+This tells strap to use the plugin source code obtained by (effectively) running:
+
+```bash
+git clone https://github.com/acme/hello
+cd hello
+git checkout tags/1.0.2
+```
+
+##### Strap Plugin Identifier without a `@version`
+      
+If there is not a `@version` suffix in a `strap-plugin-id`, a `@version` value of `@LATEST` will be assumed and the
+git repository's default branch (usually `master`) will be used as the plugin source.
+
+For example, consider the following Strap plugin id:
+
+    https:://github.com/acme/hello
+    
+This indicates the plugin source code will be obtained by (effectively) running:
+
+```bash
+git clone https://github.com/acme/hello
+```
+ 
+and no specific branch will be checked out (implying the default branch will be used, which is `master` in most cases).
+
+> **WARNING**:
+> 
+> It is *strongly recommended to always specify a `@version` suffix* in every strap plugin idenfier to ensure
+> deterministic (guaranteed repeatable) behavior.  Omitting `@version` suffixes can cause errors or problems
+> during a `strap` run.  Omission can be useful while developing a plugin, but it is generally recommended to avoid
+> this in all other scenarios.
+
+#### Strap Plugins Directory
+
+Any 3rd-party plugin referenced by you (or by other plugins) that are not included in the Strap installation 
+are automatically downloaded and stored in your `$HOME/.strap/plugins` directory.
+
+This directory is organized according to the following rules based on `strap-plugin-id`s.
+
+<!-- 
+* Each `/`-delimited element of a plugin name corresponds to a nested subdirectory path in `HOME/.strap/plugins`.
+* If the plugin name contains the `@` character, the string literal after that character represents a specific 
+  semantic version of that plugin.  The version is the final directory in plugin's subdirectory path.  Additionally:
+  * The `version` name MUST equal a tag name for that git repository, and
+  * The `version` name MUST conform to the semantic version name scheme defined by the 
+    [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html) specification.   
+* If the plugin name does *not* contain a `@` character, the plugin version is automatically assigned to be `LATEST`
+  and the git repository's default branch (usually `master`) will be used as the plugin source.
+* The first two name elements (first two subdirectory names) MUST reflect an apex domain name according to the 
+  following heuristic:  `element1/element2` reflects the apex domain of `element2.element1`.  For example, 
+  `com/github` reflects the apex domain of `github.com`.
+
+-->
+
+That directo
+
+#### Strap Plugin File Structure
+
+A strap plugin is a git repository that has the following directory and file structure:
+
+TBD
