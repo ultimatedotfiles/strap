@@ -28,7 +28,6 @@ STRAP_SUCCESS=''
 STRAP_QUIET_FLAG="-q"
 Q="$STRAP_QUIET_FLAG"
 
-#STRAP_GIT_NAME="$(id -F)"
 STRAP_ISSUES_URL="https://github.com/ultimatedotfiles/strap/issues/new"
 
 # Are we running interactive?
@@ -62,8 +61,8 @@ println() {
   echo "$msg" >> "$file"
 }
 
-[ "$USER" = "root" ] && strap::abort "Run 'strap run' as yourself, not root."
-groups | grep $Q admin || strap::abort "Add $USER to the admin group."
+[ "$STRAP_USER" = "root" ] && strap::abort "Run 'strap run' as yourself, not root."
+groups | grep $Q admin || strap::abort "Add $STRAP_USER to the admin group."
 
 # Initialize sudo access:
 strap::sudo::enable
@@ -99,10 +98,10 @@ if fdesetup status | grep $Q -E "FileVault is (On|Off, but will be enabled after
   strap::ok
 elif [ -n "$STRAP_INTERACTIVE" ]; then
   strap::action "Enabling full-disk encryption on next reboot:"
-  sudo fdesetup enable -user "$USER" | tee ~/Desktop/"FileVault Recovery Key.txt"
+  sudo fdesetup enable -user "$STRAP_USER" | tee ~/Desktop/"FileVault Recovery Key.txt"
   strap::ok
 else
-  echo && strap::abort "Run 'sudo fdesetup enable -user \"$USER\"' to enable full-disk encryption."
+  echo && strap::abort "Run 'sudo fdesetup enable -user \"$STRAP_USER\"' to enable full-disk encryption."
 fi
 
 # --------------
@@ -318,7 +317,7 @@ if [[ -z "$github_token" ]]; then
 fi
 
 strap::running "Checking git config user.email"
-STRAP_GIT_EMAIL="$(git config --global user.email 2>/dev/null || true)"
+STRAP_GIT_EMAIL="$(git config --global user.email || true)"
 if [[ -z "$STRAP_GIT_EMAIL" ]]; then
   STRAP_GIT_EMAIL="$(strap::github::api::user::email "$github_token" || true)"
   if [[ -z "$STRAP_GIT_EMAIL" ]]; then
@@ -330,12 +329,17 @@ fi
 strap::ok
 
 strap::running "Checking git config user.name"
-if ! git config --global user.name 2>/dev/null; then
-  name="$(strap::github::api::user::name || true)"
-  if [[ -n "$name" ]]; then
-    strap::action "Setting git config user.name = $name"
-    git config --global user.name "$name"
+STRAP_GIT_NAME="$(git config --global user.name || true)"
+if [[ -z "$STRAP_GIT_NAME" ]]; then
+  STRAP_GIT_NAME="$(strap::github::api::user::name || true)"
+  if [[ -z "$STRAP_GIT_NAME" ]]; then
+    STRAP_GIT_NAME="$(id -F)"
   fi
+  if [[ -z "$STRAP_GIT_NAME" ]]; then
+    strap::readval STRAP_GIT_NAME "Enter your first and last name" false true
+  fi
+  strap::action "Setting git config user.name = $STRAP_GIT_NAME"
+  git config --global user.name "$STRAP_GIT_NAME"
 fi
 strap::ok
 
