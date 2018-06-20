@@ -4,6 +4,7 @@ set -Eeuo pipefail # https://vaneyckt.io/posts/safer_bash_scripts_with_set_euxo_
 
 command -v strap::lib::import >/dev/null || { echo "strap::lib::import is not available" >&2; exit 1; }
 strap::lib::import logging || . logging.sh
+strap::lib::import lang || . lang.sh
 
 set -a
 
@@ -49,7 +50,12 @@ _EOF_
 # From https://stackoverflow.com/a/48487783/407170
 strap::semver::compare() {
 
-  local a="${1:-}" op="${2:-}" b="${3:-}" al="${a##*.}" bl="${b##*.}"
+  local a="${1:-}" && strap::assert "$a" '$1 must be the version being compared (left operand)'
+  local op="${2:-}" && strap::assert "$op" '$2 must be the semver comparison operation (<, <=, ==, !=, >=, >)'
+  local b="${3:-}" && strap::assert "$b" '$3 must be the version to compare (right operand)'
+  local al="${a##*.}"
+  local bl="${b##*.}"
+
   while [[ $al =~ ^[[:digit:]] ]]; do al=${al:1}; done
   while [[ $bl =~ ^[[:digit:]] ]]; do bl=${bl:1}; done
   local ai=${a%$al} bi=${b%$bl}
