@@ -11,6 +11,7 @@ strap::lib::import git || . git.sh
 
 __STRAP_GITHUB_USER_JSON="${__STRAP_GITHUB_USER_JSON:-}"
 __STRAP_GITHUB_USER_EMAILS_JSON="${__STRAP_GITHUB_USER_EMAILS_JSON:-}"
+__STRAP_GITHUB_USER_KEYS_JSON="${__STRAP_GITHUB_USER_KEYS_JSON:-}"
 
 strap::github::user::ensure() {
 
@@ -83,7 +84,7 @@ strap::github::api::request() {
   local -r body="$(echo "$response" | sed -e 's/HTTPSTATUS\:.*//g')"
   local -r status_code="$(echo "$response" | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')"
 
-  if [[ "$status_code" == "200" ]]; then
+  if [[ "$status_code" == "200" || "$status_code" == "201" ]]; then
     echo "$body"
   elif [[ "$status_code" == 4* ]]; then
     return 1
@@ -242,4 +243,62 @@ strap::github::api::user::email() {
   fi
   [[ -z "$email" ]] && return 1
   echo "$email"
+}
+
+strap::github::api::user::keys() {
+
+  local json="$__STRAP_GITHUB_USER_KEYS_JSON"
+
+  if [[ -z "$json" ]]; then
+    local -r token="${1:-}" && strap::assert "$token" '$1 must be a github api token'
+    json="$(strap::github::api::request "$token" 'https://api.github.com/user/keys' || true)"
+    [[  -z "$json" ]] && return 1
+    export __STRAP_GITHUB_USER_KEYS_JSON="$json"
+  fi
+
+  echo "$json"
+}
+
+strap::github::api::user::keys::add() {
+  local -r token="${1:-}" && strap::assert "$token" '$1 must be a github api token'
+  local -r key="${2:-}" && strap::assert "$key" '$2 must the contents of an ssh public key file'
+  now="$(date -u +%FT%TZ)"
+  request_body="{ \"title\": \"Strap-generated RSA public key on $now\", \"key\": \"$key\" }"
+  response="$(curl --silent --show-error -i -H "Authorization: token $token" -H 'Content-Type: application/json' -X POST -d "$request_body" https://api.github.com/user/keys)"
+  status_code="$(echo "$response" | head -1 | awk '{print $2}')"
+  #headers="$(echo "$response" | sed "/^\s*$(printf '\r')*$/q" | sed '/^[[:space:]]*$/d' | tail -n +2)"
+  #body="$(echo "$response" | sed "1,/^\s*$(printf '\r')*$/d")"
+  if [[ "$status_code" != "201" ]]; then
+    strap::abort 'Unable to upload Strap-generated RSA private key to GitHub'
+  fi
+}
+
+strap::github::api::user::keys::contains() {
+  local -r token="${1:-}" && strap::assert "$token" '$1 must be a github api token'
+  local -r key="${2:-}" && strap::assert "$key" '$2 must be an ssh public key'
+  local -r json="$(strap::github::api::user::keys "$token")"
+  local result="$(echo "$json" | jq -r ".[] | select(.key == \"$key\") | .key")"
+  if [[ -z "$result" ]]; then
+    return 1
+  fi
+}
+
+strap::github::api::user::keys::ensure() {
+
+  local -r token="${1:-}" && strap::assert "$token" '$1 must be a github api token'
+  local -r key="${2:-}" && strap::assert "$key" '$2 must the contents of an ssh public key file'
+
+  strap::running "Checking ssh public key registered with GitHub"
+
+  if ! strap::github::api::user::keys::contains "$token" "$key"; then
+
+    strap::action "Registering ssh public key with GitHub"
+
+    strap::github::api::user::keys::add "$token" "$key"
+    # remove any cached key result since we just added one.  This ensures the next time keys are requested, the
+    # complete set will be retrieved:
+    unset __STRAP_GITHUB_USER_KEYS_JSON
+  fi
+
+  strap::ok
 }

@@ -357,7 +357,8 @@ strap::lib::import ssh || source ../lib/ssh.sh
 dir="$HOME/.ssh"
 strap::fs::dir::ensure "$dir" 700 "~/.ssh"
 strap::fs::file::ensure "$dir/authorized_keys" 600 "~/.ssh/authorized_keys"
-strap::fs::file::ensure "$dir/known_hosts" 600 "~/.ssh/known_hosts"
+ssh_known_hosts_file="$dir/known_hosts"
+strap::fs::file::ensure "$ssh_known_hosts_file" 600 "~/.ssh/known_hosts"
 file="$dir/config"
 strap::fs::file::ensure "$file" 600 "~/.ssh/config"
 
@@ -436,6 +437,25 @@ strap::ok
 
 strap::fs::file::ensure "$ssh_key" 400 "~/.ssh/id_rsa"
 strap::fs::file::ensure "$ssh_pub_key" 400 "~/.ssh/id_rsa.pub"
+
+
+#############################################################
+# GitHub SSH:
+#############################################################
+
+strap::bot "GitHub SSH"
+
+github_ssh_known_host_entry="github.com ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAq2A7hRGmdnm9tUDbO9IDSwBK6TbQa+PXYPCPy6rbTrTtw7PHkccKrpp0yVhp5HdEIcKr6pLlVDBfOLX9QUsyCOV0wzfjIJNlGEYsdlLJizHhbn2mUjvSAHQqZETYP81eFzLQNnPHt4EVVUh7VfDESU84KezmD5QlWpXLmvU31/yMf+Se8xhHTvKSCZIFImWwoG6mbUoWf9nzpIoaSjB+weqqUUmpaaasXVal72J+UX2B+2RPW3RcT0eOzQgqlJL3RKrTJvdsjE3JEAvGq3lGHSZXy28G3skua2SmVi/w4yCE6gbODqnTWlg7+wC604ydGXA8VJiS5ap43JXiUFFAaQ=="
+
+strap::running "Checking github.com in ~/.ssh/known_hosts"
+if ! grep "^github.com" "$ssh_known_hosts_file" >/dev/null 2>&1; then
+  strap::action "Adding github.com to ~/.ssh/known_hosts"
+  echo "$github_ssh_known_host_entry" >> "$ssh_known_hosts_file"
+fi
+strap::ok
+
+ssh_pub_key_contents="$(<$ssh_pub_key)"
+strap::github::api::user::keys::ensure "$github_token" "$ssh_pub_key_contents"
 
 # make config/state a little more secure, just in case:
 chmod -R go-rwx "$STRAP_USER_HOME"
