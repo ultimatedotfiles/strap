@@ -403,7 +403,6 @@ chmod 600 "$file"
 
 ssh_key="$dir/id_rsa"
 ssh_pub_key="${ssh_key}.pub"
-ssh_key_created=false
 
 strap::ssh::idrsa::passphrase::ensure
 
@@ -423,7 +422,6 @@ if [ ! -f "$ssh_key" ]; then
 
   # TODO: STRAP_GIT_EMAIL can be a github noreply address - in this case, we want the private/primary email instead
   ssh-keygen -t rsa -b 4096 -C "Strap auto-generated RSA key for $STRAP_GIT_EMAIL" -P "$ssh_key_passphrase" -f "$ssh_key" -q
-  ssh_key_created=true
 
   expect << EOF
     spawn ssh-add -K $ssh_key
@@ -454,7 +452,9 @@ if ! grep "^github.com" "$ssh_known_hosts_file" >/dev/null 2>&1; then
 fi
 strap::ok
 
-ssh_pub_key_contents="$(<$ssh_pub_key)"
+# piping the contents to awk to retain only the first two tokens (the third, if it exists, is the ssh key comment
+# which GitHub does not store in its JSON, so any equality comparison would fail)
+ssh_pub_key_contents="$(cat $ssh_pub_key | awk '{print $1 " " $2}')"
 strap::github::api::user::keys::ensure "$github_token" "$ssh_pub_key_contents"
 
 # make config/state a little more secure, just in case:
