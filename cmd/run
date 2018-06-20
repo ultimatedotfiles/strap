@@ -187,17 +187,19 @@ STRAP_SHELL_INIT_FILE="${STRAP_USER_HOME:-}/straprc"
 file="$STRAP_SHELL_INIT_FILE"
 
 file_existed=false && [[ -f "$file" ]] && file_existed=true
-strap::fs::file::ensure "$file" 'u+rw'
+strap::fs::file::ensure "$file" 'u+rw' '~/.strap/straprc'
 [[ "$file_existed" != true ]] && cat "$STRAP_HOME/etc/profile.d/straprc" > "$file"
 
-declare -a files=("$HOME/.bashrc" "$HOME/.zshrc")
-for file in "${files[@]}"; do
+declare -a filenames=(".bashrc" ".zshrc")
+for filename in "${filenames[@]}"; do
 
-  strap::fs::file::ensure "$file" 'u+rw'
+  file="$HOME/$filename"
 
-  strap::running "Checking $STRAP_SHELL_INIT_FILE referenced in $file"
+  strap::fs::file::ensure "$file" 'u+rw' "~/$filename"
+
+  strap::running "Checking ~/.strap/straprc referenced in ~/$filename"
   if ! grep -q "$STRAP_SHELL_INIT_FILE" "$file"; then
-    strap::action "Enabling $STRAP_SHELL_INIT_FILE in $file"
+    strap::action "Enabling ~/.strap/straprc in ~/$filename"
     println "$file" ''
     println "$file" '# strap:begin'
     println "$file" "[ -f \"$STRAP_SHELL_INIT_FILE\" ] && . \"$STRAP_SHELL_INIT_FILE\""
