@@ -146,13 +146,13 @@ are, how to use them, and how to write your own plugin(s) if you want to add or 
 
 ### What is a Strap Plugin?
 
-A strap plugin is first and foremost just a git repository that conforms to a file structure that Strap can 
+A strap plugin is just a git repository that conforms to a file structure that Strap can 
 understand.  This means Strap can pull in functionality from anywhere it can access a git repository via a simple
 `git clone` command based on the plugin's unique identifier.
 
-#### Strap Plugin Identifier
+### Strap Plugin Identifier
 
-A Strap plugin identifier is a globally-unique string that uniquely identifies a specific plugin's source.
+A Strap plugin identifier is a string that uniquely identifies a plugin's source.
 
 The plugin identifier string format MUST adhere to the following format:
 
@@ -161,12 +161,12 @@ The plugin identifier string format MUST adhere to the following format:
 where:
   * `git-protocol-uri` equals a [Git Protocol URI](https://git-scm.com/book/en/v2/Git-on-the-Server-The-Protocols)
   * `@version` is an optional version designation suffix starting with the string literal `@` followed by a `version`
-    string. The `version` string MUST:
+    string. If present, the `version` string MUST:
     * equal a tag name in the specified git repository identified by `git-protocol-uri`
     * conform to the semantic version name scheme defined in the
       [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html) specification.
 
-##### Strap Plugin Identifier with a `@version`
+#### Strap Plugin Identifier with `@version`
 
 Example:
 
@@ -180,10 +180,10 @@ cd hello
 git checkout tags/1.0.2
 ```
 
-##### Strap Plugin Identifier without a `@version`
+#### Strap Plugin Identifier without `@version`
       
 If there is not a `@version` suffix in a `strap-plugin-id`, a `@version` value of `@LATEST` will be assumed and the
-git repository's default branch (usually `master`) will be used as the plugin source.
+git repository's default branch will be used as the plugin source.
 
 For example, consider the following Strap plugin id:
 
@@ -200,36 +200,84 @@ and no specific branch will be checked out (implying the default branch will be 
 > **WARNING**:
 > 
 > It is *strongly recommended to always specify a `@version` suffix* in every strap plugin idenfier to ensure
-> deterministic (guaranteed repeatable) behavior.  Omitting `@version` suffixes can cause errors or problems
-> during a `strap` run.  Omission can be useful while developing a plugin, but it is generally recommended to avoid
-> this in all other scenarios.
+> deterministic (repeatable) behavior.  Omitting `@version` suffixes can cause errors or problems
+> during a `strap` run.  Omission can be useful while developing a plugin, but it is generally recommended to provide
+> a `@version` suffix at all other times.
 
-#### Strap Plugins Directory
+### Strap Plugins Directory
 
 Any 3rd-party plugin referenced by you (or by other plugins) that are not included in the Strap installation 
 are automatically downloaded and stored in your `$HOME/.strap/plugins` directory.
 
 This directory is organized according to the following rules based on `strap-plugin-id`s.
 
-<!-- 
-* Each `/`-delimited element of a plugin name corresponds to a nested subdirectory path in `HOME/.strap/plugins`.
-* If the plugin name contains the `@` character, the string literal after that character represents a specific 
-  semantic version of that plugin.  The version is the final directory in plugin's subdirectory path.  Additionally:
-  * The `version` name MUST equal a tag name for that git repository, and
-  * The `version` name MUST conform to the semantic version name scheme defined by the 
-    [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html) specification.   
-* If the plugin name does *not* contain a `@` character, the plugin version is automatically assigned to be `LATEST`
-  and the git repository's default branch (usually `master`) will be used as the plugin source.
-* The first two name elements (first two subdirectory names) MUST reflect an apex domain name according to the 
-  following heuristic:  `element1/element2` reflects the apex domain of `element2.element1`.  For example, 
-  `com/github` reflects the apex domain of `github.com`.
+* The URI host part of the id is parsed and split up (tokenized) into a list of separate string elements whenever a 
+  dot character ( `.` ) is encountered.  For example, the string `github.com` becomes the list `[github, com]`
 
--->
+* The list order is then reversed.  For example list `[github, com]` becomes list `[com, github]`
 
-That directo
+* The new (now reversed) list elements are joined together with the forward-slash ( `/` ) character to form a single 
+  string. For example, list `[com, github]` becomes the string `com/github`
 
-#### Strap Plugin File Structure
+* The resulting string is appended to the string `$HOME/.strap/plugins/`.  For example: `com/github` becomes 
+  `$HOME/.strap/plugins/com/github`
 
-A strap plugin is a git repository that has the following directory and file structure:
+* The uri path in the Strap Plugin ID is appended to the resulting string.
+  
+  For example, a strap plugin id of `https://github.com/acme/hello` has a URI path of `/acme/hello`.  This implies the 
+  resulting string is `$HOME/.strap/plugins/com/github/acme/hello`
+* A forward-slash character ( `/` ) and then the `version` string is appended to the resulting string.  If no version 
+  is found the string literal `LATEST` is used.
+  
+  For example, `https://github.com/acme/hello@1.0.2` becomes the string 
+  `$HOME/.strap/plugins/com/github/acme/hello/1.0.2` and `https://github.com/acme/hello` becomes the string 
+  `$HOME/.strap/plugins/com/github/acme/hello/LATEST`
+  
+* The resulting string is used to create the directory where that plugin's code will be downloaded, for example:
+  
+  `mkdir -p $HOME/.strap/plugins/com/github/acme/hello/1.0.2`
 
-TBD
+### Strap Plugin Structure
+
+A strap plugin is a git repository with the following directories at its root:
+
+* `cmd` is optional and may contain sub-commands that strap can execute.
+* `hooks` is optional and may contain executable scripts that strap can run during various lifecycle phases.
+* `lib` is optional and may contain scripts which export variables and functions that can be used by other plugins.
+
+Assuming `https://github.com/acme/hello` was a strap plugin repository, here is an example of what its directory 
+structure might look like:
+
+```
+cmd/
+    hello
+hooks/
+    run
+lib/
+    hello.sh
+```
+
+The above tree shows the following:
+
+* `cmd/hello` is an executable script that can be executed as a strap sub-command.  That is, a strap user could
+  type `strap hello` and strap would delegate execution to the `cmd/hello` script.  When committing this file to 
+  source control, ensure that the file's executable flag is set, for example `chmod u+x cmd/hello`.
+
+* `hooks/run` is an executable script that will execute when `strap run` is called. For example, if a strap user types
+  `strap run` to kick off a run, strap will in turn invoke `hooks/run` as part of that execution phase.  Scripts in 
+  the `hooks` directory must match exactly the name of the strap command being run.  Additionally, when committing 
+  this file to source control, also ensure that the file's executable flag is set, for example `chmod u+x hooks/run`.
+
+* `lib/hello.sh` is a bash script that may export shell variables and functions that can be sourced (used) by other 
+  plugins
+  
+  For example, if `lib/hello.sh` had a function definition like this:
+  
+      com::github::acme::hello() { 
+        echo "hello"
+      }
+      
+  other plugins could *import* `hello.sh` and then they would be able to invoke `com::github::acme::hello` when they 
+  wanted.
+  
+  We will cover how to import plugin library scripts soon.
