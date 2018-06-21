@@ -206,17 +206,17 @@ and no specific branch will be checked out (implying the default branch will be 
 
 ### Strap Plugins Directory
 
-Any 3rd-party plugin referenced by you (or by other plugins) that are not included in the Strap installation 
+Any plugin referenced by you (or by other plugins) that are not included in the Strap installation 
 are automatically downloaded and stored in your `$HOME/.strap/plugins` directory.
 
-This directory is organized according to the following rules based on `strap-plugin-id`s.
+This directory is organized according to the following rules based on the Strap Plugin ID format:
 
 * The URI host part of the id is parsed and split up (tokenized) into a list of separate string elements whenever a 
   dot character ( `.` ) is encountered.  For example, the string `github.com` becomes the list `[github, com]`
 
 * The list order is then reversed.  For example list `[github, com]` becomes list `[com, github]`
 
-* The new (now reversed) list elements are joined together with the forward-slash ( `/` ) character to form a single 
+* The new (now reversed) list elements are joined together with the forward-slash character ( `/` ) to form a single 
   string. For example, list `[com, github]` becomes the string `com/github`
 
 * The resulting string is appended to the string `$HOME/.strap/plugins/`.  For example: `com/github` becomes 
