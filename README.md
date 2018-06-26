@@ -44,8 +44,8 @@ out of the box on pretty much any Mac or Linux machine created in the last few y
 Python, Java or any other tool to be installed on your box first in order to run (but you can install those 
 with Strap as you see fit). Strap should work on any machine with Bash 3.2.57 or later.
 
-That said, don't worry if you prefer ksh or any other shell.  Bash is just used to write and run strap - you 
-can install and use ksh or any other shell you prefer.
+That said, don't worry if you prefer zsh or any other shell.  Bash is just used to write and run strap - you 
+can install and use zsh or any other shell you prefer.
 
 ### Built on the Shoulders of Giants
 
