@@ -39,7 +39,7 @@ How does strap work?
 
 ### It's Just Bash, Man
 
-Strap is a command line tool with a set of sub-commands and plugins written in 100% Bash scripts to ensure it can run
+Strap is a command line tool with a set of sub-commands and packages written in 100% Bash scripts to ensure it can run
 out of the box on pretty much any Mac or Linux machine created in the last few years.  It doesn't require Ruby, 
 Python, Java or any other tool to be installed on your box first in order to run (but you can install those 
 with Strap as you see fit). Strap should work on any machine with Bash 3.2.57 or later.
@@ -81,25 +81,28 @@ This means Strap is *idempotent* - you can run it over and over again, and your 
 every time you run it. Nice! 
 
 Based on this, you can (and should) run strap regularly to ensure your system is configured how you want it and your 
-software is up-to-date at all times.  
+software is up-to-date at all times.
 
-### Just Plug It In, Plug It In
+### Pack It Up, Pack It In
 
-Strap was purposefully designed to be lightweight by using a very lean core and providing most functionality in
-the form of plugins.  Why is this important?
+Strap was purposefully designed to have a very lean core and delegate most functionality to packages.  Why 
+is this important?
 
 *Because you can extend Strap for your needs*.
 
-That's right - if Strap doesn't have something you need, you can write a simple bash plugin to provide the 
-functionality you need.
+That's right - if Strap doesn't have something you need, you can write a simple bash package to provide it.  Strap
+gives you the ability to package up your bash functions, version them, and supply them to other Strap packages.  This
+means Strap supports import-like behavior: a package can depend on other packages and *import* those
+packages' library functions and variables.
 
-And just as cool - Strap provides an import-like functionality for plugins:  a plugin can depend on other plugins and
-*import* these plugins' library functions.  This allows you to extend and enhance functionality that may not be in Strap.
+Additionally, a Strap package can contain scripts that hook in to Strap's run lifecycle, kind of like a 'plugin'. This 
+allows you to extend and enhance functionality that may not be in Strap by default.
 
 And this helps prevent lock-in.  It allows you to get what you need on your timeline without waiting on anyone.  And it 
-allows for a community to grow and provide open-source plugins we can all benefit from.  And plugins are just git 
-repositories, so they can be added as simply as creating a new git repository.  And because GitHub is pretty much the
-de-facto git origin for open-source software these days, Strap has native git and GitHub integration too!  Awesome!
+allows for a community to grow and provide open-source packages we can all benefit from.  And packages are 
+just folders, so they can be created as simply as creating a new git repository.  And because 
+GitHub is pretty much the de-facto git origin for open-source software these days, Strap has native git and GitHub 
+integration too.
 
 ### Customization and Privacy
 
@@ -107,13 +110,14 @@ Because Strap is pluggable, you can 'point' it to any strap-compatible git repos
 have your own git repo that represents the customizations you care about.  And you can share this with the world so 
 others can have awesome machine setups just like you.
 
-But sometimes you (or companies) don't want the world to see what is installed on a developer machine for privacy or 
-security reasons.  If this is a concern for you, you can host your Strap configuration and plugins in a private git 
-repository. Because of Strap's native GitHub integration, it can securely authenticate with GitHub and utlize your 
+But sometimes you (or companies) don't want the world to see what is installed on a machine for privacy or 
+security reasons.  If this is a concern for you, you can host your Strap configuration and packages in a private git 
+repository. Because of Strap's native GitHub integration, it can securely authenticate with GitHub and utilize your 
 private git repositories (assuming your GitHub user account has access to said repositories).
 
-You can even mix and match repositories: use Strap's defaults, then add in your personal public repository and also 
-add your company's private repository.  Any number of sources can be used during a strap run for machine convergence.
+You can even mix and match repositories: use Strap's defaults, then add in your company's private repository, then 
+finally add in your personal repository to fill in any remaining missing gaps.  Any number of sources can be used 
+during a strap run for machine convergence.
 
 ## Usage
 
@@ -137,42 +141,58 @@ For full documentation, see: https://github.com/ultimatedotfiles/strap
 The `strap` command itself is quite simple - it basically loads some common environment settings and that's pretty 
 much it. From there, it delegates most functionality to sub-commands, very similar to how the `git` command-line tool 
 works.  The sub-commands available to you are the combined set of Strap's built-in sub-commands and any sub-commands 
-made available by any Strap plugins you reference.
+made available by any Strap packages you reference.
 
-## Plugins
+## Strap Packages
 
-Strap is designed to have a lean core with most functionality coming from plugins.  This section explains what plugins
-are, how to use them, and how to write your own plugin(s) if you want to add or extend Strap functionality.
+Strap is designed to have a lean core with most functionality coming from packages.  This section explains 
+what packages are, how to use them, and how to write your own package(s) if you want to add or extend Strap 
+functionality.
 
-### What is a Strap Plugin?
+### What Is A Strap Package?
 
-A strap plugin is just a git repository that conforms to a file structure that Strap can 
-understand.  This means Strap can pull in functionality from anywhere it can access a git repository via a simple
-`git clone` command based on the plugin's unique identifier.
+A Strap package is just a folder with bash scripts described by a `package.yml` file. 
+This means Strap can access functionality from anywhere it can access a folder.  And because git repositories are 
+folders, Strap can pull in functionality from anywhere it can access a git repository via a simple `git clone` command 
+based on the package's unique identifier.
 
-### Strap Plugin Identifier
+### Strap Package Identifier
 
-A Strap plugin identifier is a string that uniquely identifies a plugin's source.
+A Strap Package Identifier is a string that uniquely identifies a Strap package.
 
-The plugin identifier string format MUST adhere to the following format:
+The package identifier string format MUST adhere to the following definition:
 
-    strap-plugin-id = git-protocol-uri[@version]
-
-where:
-  * `git-protocol-uri` equals a [Git Protocol URI](https://git-scm.com/book/en/v2/Git-on-the-Server-The-Protocols)
-  * `@version` is an optional version designation suffix starting with the string literal `@` followed by a `version`
-    string. If present, the `version` string MUST:
-    * equal a tag name in the specified git repository identified by `git-protocol-uri`
-    * conform to the semantic version name scheme defined in the
-      [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html) specification.
-
-#### Strap Plugin Identifier with `@version`
-
-Example:
-
-    https:://github.com/acme/hello@1.0.2
+    strap-package-id = group-id ":" package-name [":" package-version]
     
-This tells strap to use the plugin source code obtained by (effectively) running:
+    group-id = "com.github." github-account-name
+    
+where
+ * `github-account-name` equals a valid github username or organization name, for example `jsmith` or `ultimatedotfiles`
+ * `package-name` equals a git repository name within the specified github account, for example `cool-package`
+ * `package-version`, if present, equals a git `commit-ish` string that MUST be a tag, branch
+    or sha that can be provided as an argument to `git checkout`.
+    
+A package release SHOULD always have a `package-version` string that conforms to the semantic version name scheme 
+defined in the [Semantic Versioning 2.0.0 specification](https://semver.org/spec/v2.0.0.html).
+
+Some examples:
+
+ * `com.github.acme:hello:0.2.1`
+ * `com.github.ultimatedotfiles:cool-package:1.0.3`
+
+> NOTE: we realize it is a rather constrictive requirement to have all packages hosted on github and conform to the
+  specified location and naming scheme.  These restrictions will be relaxed when Strap's functionality
+  is enhanced to support arbitrary repository locations (e.g. bitbucket, gitlab, Artifactory, etc).
+
+#### Strap Package Resolution
+
+How does Strap download a package based on the package identifier?
+
+Consider the following Strap Package Identifier example:
+
+    com.github.acme:hello:1.0.2
+    
+This tells strap to download the package source code obtained by (effectively) running:
 
 ```bash
 git clone https://github.com/acme/hello
@@ -180,16 +200,16 @@ cd hello
 git checkout tags/1.0.2
 ```
 
-#### Strap Plugin Identifier without `@version`
+#### Strap Package Resolution Without `:package-version`
       
-If there is not a `@version` suffix in a `strap-plugin-id`, a `@version` value of `@LATEST` will be assumed and the
-git repository's default branch will be used as the plugin source.
+If there is not a `:package-version` suffix in a `strap-package-id`, a `:package-version` value of `:HEAD` will be 
+assumed and the git repository's default branch will be used as the package source.
 
-For example, consider the following Strap plugin id:
+For example, consider the following Strap package id:
 
-    https:://github.com/acme/hello
+    com.github.acme:hello
     
-This indicates the plugin source code will be obtained by (effectively) running:
+This indicates the package source code will be obtained by (effectively) running:
 
 ```bash
 git clone https://github.com/acme/hello
@@ -199,53 +219,54 @@ and no specific branch will be checked out (implying the default branch will be 
 
 > **WARNING**:
 > 
-> It is *strongly recommended to always specify a `@version` suffix* in every strap plugin idenfier to ensure
-> deterministic (repeatable) behavior.  Omitting `@version` suffixes can cause errors or problems
-> during a `strap` run.  Omission can be useful while developing a plugin, but it is generally recommended to provide
-> a `@version` suffix at all other times.
+> It is *strongly recommended to always specify a `:package-version` suffix* in every strap package idenfier to ensure
+> deterministic (repeatable) behavior.  Omitting `:package-version` suffixes - and relying on the `:master` default - 
+> can cause errors or problems during a `strap` run. Omission can be useful while developing a package, but it is 
+> recommended to provide a `:package-version` suffix at all other times.
 
-### Strap Plugins Directory
+### Strap Packages Directory
 
-Any plugin referenced by you (or by other plugins) that are not included in the Strap installation 
-are automatically downloaded and stored in your `$HOME/.strap/plugins` directory.
+Any package referenced by you (or by other packages) that are not included in the Strap installation 
+are automatically downloaded and stored in your `$HOME/.strap/packages` directory.
 
-This directory is organized according to the following rules based on the Strap Plugin ID format:
+This directory is organized according to the following rules based on the Strap Package ID.  An example Strap
+Package ID of `com.github.acme:hello:1.0.2` will be used for illustration purposes.
 
-* The URI host part of the id is parsed and split up (tokenized) into a list of separate string elements whenever a 
-  dot character ( `.` ) is encountered.  For example, the string `github.com` becomes the list `[github, com]`
+* The strap package id's `group-id` component is parsed, and period characters ( `.` ) are replaced with 
+  forward-slash characters ( `/` ).  For example, the `group-id` of `com.github.acme` becomes `com/github/acme`
 
-* The list order is then reversed.  For example list `[github, com]` becomes list `[com, github]`
-
-* The new (now reversed) list elements are joined together with the forward-slash character ( `/` ) to form a single 
-  string. For example, list `[com, github]` becomes the string `com/github`
-
-* The resulting string is appended to the string `$HOME/.strap/plugins/`.  For example: `com/github` becomes 
-  `$HOME/.strap/plugins/com/github`
-
-* The uri path in the Strap Plugin ID is appended to the resulting string.
+* The resulting string is appended with a forward-slash ( `/` ).  For example, `com/github/acme` becomes 
+  `com/github/acme/`
   
-  For example, a strap plugin id of `https://github.com/acme/hello` has a URI path of `/acme/hello`.  This implies the 
-  resulting string is `$HOME/.strap/plugins/com/github/acme/hello`
-* A forward-slash character ( `/` ) and then the `version` string is appended to the resulting string.  If no version 
-  is found the string literal `LATEST` is used.
+* The resulting string is appended with the package id's `package-name` component.  For 
+  example, `com/github/acme/` becomes `com/github/acme/hello`
   
-  For example, `https://github.com/acme/hello@1.0.2` becomes the string 
-  `$HOME/.strap/plugins/com/github/acme/hello/1.0.2` and `https://github.com/acme/hello` becomes the string 
-  `$HOME/.strap/plugins/com/github/acme/hello/LATEST`
+* The resulting string is appended with a forward-slash ( `/` ).  For example, `com/github/acme/hello` becomes 
+  `com/github/acme/hello/`
+
+* The resulting string is appended with the `strap-package-id`'s `package-version` component if one exists, or `HEAD`
+  if one doesn't exist.  For example:
   
-* The resulting string is used to create the directory where that plugin's code will be downloaded, for example:
+  * A strap package id of `com.github.acme:hello:1.0.2` becomes `com/github/acme/hello/1.0.2` and
+  * A strap package id of `com.github.acme:hello` becomes `com/github/acme/hello/HEAD`
   
-  `mkdir -p $HOME/.strap/plugins/com/github/acme/hello/1.0.2`
+* The resulting string is appended to the string `$HOME/.strap/packages/`.  For example,
+  `com/github/acme/hello/1.0.2` becomes `$HOME/.strap/packages/com/github/acme/hello/1.0.2`
 
-### Strap Plugin Structure
+* The resulting string is used as the argument to the `mkdir -p` command, which is used to create the directory where 
+  that package's code will be downloaded, for example:
+  
+  `mkdir -p "$HOME/.strap/packages/com/github/acme/hello/1.0.2"`
 
-A strap plugin is a git repository with the following directories at its root:
 
-* `cmd` is optional and may contain sub-commands that strap can execute.
-* `hooks` is optional and may contain executable scripts that strap can run during various lifecycle phases.
-* `lib` is optional and may contain scripts which export variables and functions that can be used by other plugins.
+### Strap Package Structure
 
-Assuming `https://github.com/acme/hello` was a strap plugin repository, here is an example of what its directory 
+A strap package is a folder containing:
+
+* A `package.yml` file
+* Any number of bash scripts
+
+Assuming `https://github.com/acme/hello` was a strap package repository, here is an example of what its directory 
 structure might look like:
 
 ```
@@ -255,12 +276,17 @@ hooks/
     run
 lib/
     hello.sh
+package.yml
 ```
 
 The above tree shows the following:
 
+* `package.yml` is a Strap package yaml file.  This file contains metadata about your package that Strap uses
+  to ensure your package can be referenced by other packages, as well as enable any Strap sub-commands your package
+  might provide, and more.
+
 * `cmd/hello` is an executable script that can be executed as a strap sub-command.  That is, a strap user could
-  type `strap hello` and strap would delegate execution to the `cmd/hello` script.  When committing this file to 
+  type `strap hello` and strap would delegate execution to your `cmd/hello` script.  When committing this file to 
   source control, ensure that the file's executable flag is set, for example `chmod u+x cmd/hello`.
 
 * `hooks/run` is an executable script that will execute when `strap run` is called. For example, if a strap user types
@@ -269,7 +295,7 @@ The above tree shows the following:
   this file to source control, also ensure that the file's executable flag is set, for example `chmod u+x hooks/run`.
 
 * `lib/hello.sh` is a bash script that may export shell variables and functions that can be sourced (used) by other 
-  plugins
+  packages
   
   For example, if `lib/hello.sh` had a function definition like this:
   
@@ -277,7 +303,8 @@ The above tree shows the following:
         echo "hello"
       }
       
-  other plugins could *import* `hello.sh` and then they would be able to invoke `com::github::acme::hello` when they 
+  other packages could *import* `hello.sh` and then they would be able to invoke `com::github::acme::hello` when they 
   wanted.
   
-  We will cover how to import plugin library scripts soon.
+  We will cover how to import package library scripts soon.
+  
