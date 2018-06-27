@@ -7,6 +7,6 @@ strap::lib::import logging || . logging.sh
 strap::lib::import lang || . lang.sh
 
 strap::path::contains() {
-  local -r element="${1:-}" && strap::assert "$element" 'requires a $1 argument'
+  local -r element="${1:-}" && strap::assert::has_length "$element" 'requires a $1 argument'
   echo "$PATH" | tr ':' '\n' | grep -q "$element"
 }

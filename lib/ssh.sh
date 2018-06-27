@@ -21,7 +21,7 @@ strap::ssh::idrsa::passphrase::get() {
 }
 
 strap::ssh::idrsa::passphrase:save() {
-  local -r passphrase="${1:-}" && strap::assert "$passphrase" '$1 must be the passphrase.'
+  local -r passphrase="${1:-}" && strap::assert::has_length "$passphrase" '$1 must be the passphrase.'
   security add-generic-password -a "${STRAP_USER}" -s "${STRAP_SSH_IDRSA_KEYCHAIN_SERVICE_NAME}" -w "$passphrase"
 }
 

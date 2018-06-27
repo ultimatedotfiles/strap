@@ -10,8 +10,8 @@ set -a
 
 strap::fs::chmod() {
 
-  local chmod="${1:-}" && strap::assert "$chmod" '$1 must be the chmod mode'
-  local target="${2:-}" && strap::assert "$target" '$2 must be the chmod target'
+  local chmod="${1:-}" && strap::assert::has_length "$chmod" '$1 must be the chmod mode'
+  local target="${2:-}" && strap::assert::has_length "$target" '$2 must be the chmod target'
   local name="${3:-}" && [[ -z "$name" ]] && name="$target"
 
   strap::running "Ensuring chmod $chmod on $name"

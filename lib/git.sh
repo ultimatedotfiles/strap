@@ -14,8 +14,8 @@ strap::git::credential::osxkeychain::available() {
 
 strap::git::config::ensure() {
 
-  local -r name="${1:-}" && strap::assert "$name" '$1 must be a git global config entry name'
-  local -r value="${2:-}" && strap::assert "$value" '$2 must be the config entry value'
+  local -r name="${1:-}" && strap::assert::has_length "$name" '$1 must be a git global config entry name'
+  local -r value="${2:-}" && strap::assert::has_length "$value" '$2 must be the config entry value'
 
   strap::running "Checking git config $name"
   local -r existing="$(git config --global "$name" 2>/dev/null || true)"
@@ -27,7 +27,7 @@ strap::git::config::ensure() {
 }
 
 strap::git::remote::available() {
-  local -r url="${1:-}" && strap::assert "$url" '$1 must be a git repository url'
+  local -r url="${1:-}" && strap::assert::has_length "$url" '$1 must be a git repository url'
   git ls-remote "$url" >/dev/null 2>&1
 }
 

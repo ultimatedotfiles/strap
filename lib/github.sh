@@ -41,7 +41,7 @@ strap::github::token::save() {
 
 strap::github::token::find() {
 
-  local -r username="${1:-}" && strap::assert "$username" '$1 must be a github username'
+  local -r username="${1:-}" && strap::assert::has_length "$username" '$1 must be a github username'
   local token=
 
   if strap::git::credential::osxkeychain::available; then
@@ -77,8 +77,8 @@ strap::github::token::find() {
 
 strap::github::api::request() {
 
-  local -r token="${1:-}" && strap::assert "$token" '$1 must be a github api token'
-  local -r url="${2:-}" && strap::assert "$url" '$2 must be a github api URL'
+  local -r token="${1:-}" && strap::assert::has_length "$token" '$1 must be a github api token'
+  local -r url="${2:-}" && strap::assert::has_length "$url" '$2 must be a github api URL'
 
   local -r response="$(curl --silent --show-error -H "Authorization: token $token" --write-out "HTTPSTATUS:%{http_code}" "$url")"
   local -r body="$(echo "$response" | sed -e 's/HTTPSTATUS\:.*//g')"
@@ -99,7 +99,7 @@ strap::github::api::request() {
 
 strap::github::api::token::create() {
 
-  local -r username="${1:-}" && strap::assert "$username" '$1 must be a github username'
+  local -r username="${1:-}" && strap::assert::has_length "$username" '$1 must be a github username'
   local -r max_password_attempts=3
   local -r max_otp_attempts=3
   local password_attempts=0
@@ -137,7 +137,7 @@ strap::github::api::token::create() {
 
     password_attempts=$((password_attempts + 1))
 
-    strap::assert "$status_code" 'Unable to parse GitHub response status.  GitHub response format is likely to have changed.  Please report this to the Strap developers.'
+    strap::assert::has_length "$status_code" 'Unable to parse GitHub response status.  GitHub response format is likely to have changed.  Please report this to the Strap developers.'
 
     if [[ ${status_code} -eq 401 ]]; then
 
@@ -199,7 +199,7 @@ strap::github::api::user() {
    local json="$__STRAP_GITHUB_USER_JSON"
 
    if [[ -z "$json" ]]; then
-      local -r token="${1:-}" && strap::assert "$token" '$1 must be a github api token'
+      local -r token="${1:-}" && strap::assert::has_length "$token" '$1 must be a github api token'
       json="$(strap::github::api::request "$token" 'https://api.github.com/user' || true)"
       [[  -z "$json" ]] && return 1
       export __STRAP_GITHUB_USER_JSON="$json"
@@ -214,7 +214,7 @@ strap::github::api::user::name() {
 }
 
 strap::github::api::token::is_valid() {
-  local -r token="${1:-}" && strap::assert "$token" '$1 must be a github api token'
+  local -r token="${1:-}" && strap::assert::has_length "$token" '$1 must be a github api token'
   local -r json="$(strap::github::api::request "$token" 'https://api.github.com/user' || true)"
   [[ -z "$json" ]] && return 1
   export __STRAP_GITHUB_USER_JSON="$json"
@@ -225,7 +225,7 @@ strap::github::api::user::emails() {
   local json="$__STRAP_GITHUB_USER_EMAILS_JSON"
 
   if [[ -z "$json" ]]; then
-    local -r token="${1:-}" && strap::assert "$token" '$1 must be a github api token'
+    local -r token="${1:-}" && strap::assert::has_length "$token" '$1 must be a github api token'
     json="$(strap::github::api::request "$token" 'https://api.github.com/user/emails' || true)"
     [[  -z "$json" ]] && return 1
     export __STRAP_GITHUB_USER_EMAILS_JSON="$json"
@@ -235,7 +235,7 @@ strap::github::api::user::emails() {
 }
 
 strap::github::api::user::email() {
-  local -r token="${1:-}" && strap::assert "$token" '$1 must be a github api token'
+  local -r token="${1:-}" && strap::assert::has_length "$token" '$1 must be a github api token'
   local -r json="$(strap::github::api::user::emails "$token")"
   local email="$(echo "$json" | jq -r '[.[] | select(.email | contains("users.noreply.github.com"))][0] | .email // empty')"
   if [[ -z "$email" ]]; then
@@ -250,7 +250,7 @@ strap::github::api::user::keys() {
   local json="$__STRAP_GITHUB_USER_KEYS_JSON"
 
   if [[ -z "$json" ]]; then
-    local -r token="${1:-}" && strap::assert "$token" '$1 must be a github api token'
+    local -r token="${1:-}" && strap::assert::has_length "$token" '$1 must be a github api token'
     json="$(strap::github::api::request "$token" 'https://api.github.com/user/keys' || true)"
     [[  -z "$json" ]] && return 1
     export __STRAP_GITHUB_USER_KEYS_JSON="$json"
@@ -260,8 +260,8 @@ strap::github::api::user::keys() {
 }
 
 strap::github::api::user::keys::add() {
-  local -r token="${1:-}" && strap::assert "$token" '$1 must be a github api token'
-  local -r key="${2:-}" && strap::assert "$key" '$2 must the contents of an ssh public key file'
+  local -r token="${1:-}" && strap::assert::has_length "$token" '$1 must be a github api token'
+  local -r key="${2:-}" && strap::assert::has_length "$key" '$2 must the contents of an ssh public key file'
   now="$(date -u +%FT%TZ)"
   request_body="{ \"title\": \"Strap-generated RSA public key on $now\", \"key\": \"$key\" }"
   response="$(curl --silent --show-error -i -H "Authorization: token $token" -H 'Content-Type: application/json' -X POST -d "$request_body" https://api.github.com/user/keys)"
@@ -274,8 +274,8 @@ strap::github::api::user::keys::add() {
 }
 
 strap::github::api::user::keys::contains() {
-  local -r token="${1:-}" && strap::assert "$token" '$1 must be a github api token'
-  local -r key="${2:-}" && strap::assert "$key" '$2 must be an ssh public key'
+  local -r token="${1:-}" && strap::assert::has_length "$token" '$1 must be a github api token'
+  local -r key="${2:-}" && strap::assert::has_length "$key" '$2 must be an ssh public key'
   local -r json="$(strap::github::api::user::keys "$token")"
   local result="$(echo "$json" | jq -r ".[] | select(.key == \"$key\") | .key")"
   if [[ -z "$result" ]]; then
@@ -285,8 +285,8 @@ strap::github::api::user::keys::contains() {
 
 strap::github::api::user::keys::ensure() {
 
-  local -r token="${1:-}" && strap::assert "$token" '$1 must be a github api token'
-  local -r key="${2:-}" && strap::assert "$key" '$2 must the contents of an ssh public key file'
+  local -r token="${1:-}" && strap::assert::has_length "$token" '$1 must be a github api token'
+  local -r key="${2:-}" && strap::assert::has_length "$key" '$2 must the contents of an ssh public key file'
 
   strap::running "Checking ssh public key registered with GitHub"
 

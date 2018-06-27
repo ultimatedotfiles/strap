@@ -50,9 +50,9 @@ _EOF_
 # From https://stackoverflow.com/a/48487783/407170
 strap::semver::compare() {
 
-  local a="${1:-}" && strap::assert "$a" '$1 must be the version being compared (left operand)'
-  local op="${2:-}" && strap::assert "$op" '$2 must be the semver comparison operation (<, <=, ==, !=, >=, >)'
-  local b="${3:-}" && strap::assert "$b" '$3 must be the version to compare (right operand)'
+  local a="${1:-}" && strap::assert::has_length "$a" '$1 must be the version being compared (left operand)'
+  local op="${2:-}" && strap::assert::has_length "$op" '$2 must be the semver comparison operation (<, <=, ==, !=, >=, >)'
+  local b="${3:-}" && strap::assert::has_length "$b" '$3 must be the version to compare (right operand)'
   local al="${a##*.}"
   local bl="${b##*.}"
 
