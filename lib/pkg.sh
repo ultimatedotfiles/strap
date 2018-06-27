@@ -2,15 +2,14 @@
 
 set -Eeuo pipefail # https://vaneyckt.io/posts/safer_bash_scripts_with_set_euxo_pipefail/
 
-STRAP_LIB_DIR="$(pwd)"
-. "$STRAP_LIB_DIR/lib.sh" || . lib.sh
-
 command -v strap::lib::import >/dev/null || { echo "strap::lib::import is not available" >&2; exit 1; }
 strap::lib::import logging || . logging.sh
 strap::lib::import lang || . lang.sh
 strap::lib::import git || . git.sh
 
 STRAP_USER_HOME="${STRAP_USER_HOME:-}" && strap::assert::has_length "$STRAP_USER_HOME" 'STRAP_USER_HOME is not set.'
+
+set -a
 
 strap::pkg::dir::relative() {
     local id="${1:-}" && strap::assert::has_length "$id" '$1 must be a Strap package id'
@@ -39,9 +38,4 @@ strap::pkg::dir() {
   echo "$STRAP_USER_HOME/packages/$relative_dir"
 }
 
-go() {
-  strap::pkg::dir "$@"
-}
-go "$@"
-
-
+set +a
