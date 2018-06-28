@@ -1,11 +1,5 @@
 #!/usr/bin/env bash
 
-PREV_SHELL_OPTIONS=$(set +o)
-case $- in
-  *e*) PREV_SHELL_OPTIONS="$PREV_SHELL_OPTIONS; set -e";;
-  *) PREV_SHELL_OPTIONS="$PREV_SHELL_OPTIONS; set +e";;
-esac
-#echo "$PREV_SHELL_OPTIONS"
 set -Eeo pipefail # https://vaneyckt.io/posts/safer_bash_scripts_with_set_euxo_pipefail/
 
 command -v strap::lib::import >/dev/null || { echo "strap::lib::import is not available" >&2; exit 1; }
@@ -42,10 +36,12 @@ strap::pkg::id::dir::relative() {
   local group_id=
   local pkg_name=
   local version=
+
   local id="${1:-}" && strap::assert::has_length "$id" '$1 must be a Strap package id'
   id="$(strap::pkg::id::canonicalize "$id")"
 
-  IFS=':' read -r group_id pkg_name version <<< "$(echo "${id//:/ }")" # split on ':' and assign each token to the vars
+  local -r tokenized="${id//:/ }" # split on ':' to use for the read command next:
+  IFS=' ' read -r group_id pkg_name version <<< "${tokenized}" # assign each token to the vars
 
   local group_dirs="${group_id//.//}" # swap out periods for forward slashes
 
@@ -58,7 +54,7 @@ strap::pkg::id::dir() {
   echo "$STRAP_USER_HOME/packages/$relative_dir"
 }
 
-strap::pkg::id::github::url() {
+strap::pkg::id::github::url::domain_and_path() {
   local group=
   local name=
   local version=
@@ -67,7 +63,7 @@ strap::pkg::id::github::url() {
   IFS=':' read -r group name version <<< "$id" # split on ':' and assign each resulting token to the vars
 
   local reversed_domain="${group%.*}" # everything leading up to, but not including, the last period character
-  local repo="${group##*.}" # everything after, but not including, the last period character
+  local -r repo="${group##*.}" # everything after, but not including, the last period character
 
   local tokens=
   IFS='.' read -r -a tokens <<< "$reversed_domain"
@@ -75,12 +71,28 @@ strap::pkg::id::github::url() {
   # reverse the domain tokens:
   local domain=''
   local len="${#tokens[@]}"
-  for (( i=${len}-1; i >= 0; i-- )); do
+  local last_index=$((len - 1))
+  for (( i=$last_index; i >= 0; i-- )); do
+    domain="${domain}${tokens[i]}"
     if [[ "$i" -ne "0" ]]; then
       domain="$domain."
     fi
-    domain="${tokens[i]}"
   done
+
+  echo "$domain/$repo/$name.git"
+}
+
+strap::pkg::id::github::url::https() {
+  local -r id="${1:-}" && strap::assert::has_length "$id" '$1 must be a Strap package id'
+  local -r domain_and_path="$(strap::pkg::id::github::url::domain_and_path "$id")"
+  echo "https://${domain_and_path}"
+}
+
+strap::pkg::id::github::url::ssh() {
+  local -r id="${1:-}" && strap::assert::has_length "$id" '$1 must be a Strap package id'
+  local domain_and_path="$(strap::pkg::id::github::url::domain_and_path "$id")"
+  domain_and_path="${domain_and_path/\//:}" # replace the first (and only the first) forward slash with a colon
+  echo "git@${domain_and_path}"
 }
 
 strap::pkg::id::dir::ensure() {
@@ -92,5 +104,3 @@ strap::pkg::id::dir::ensure() {
     mkdir -p "$dir" || strap::abort "Unable to create directory $dir for strap package $id. Please check directory write permissions for user $STRAP_USER"
   fi
 }
-
-eval "$PREV_SHELL_OPTIONS"
