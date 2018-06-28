@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 
-set -Eeuo pipefail # https://vaneyckt.io/posts/safer_bash_scripts_with_set_euxo_pipefail/
-
-command -v strap::lib::import >/dev/null || { echo "strap::lib::import is not available" >&2; exit 1; }
+set -Eeo pipefail # https://vaneyckt.io/posts/safer_bash_scripts_with_set_euxo_pipefail/
 strap::lib::import fonts || . fonts.sh
 
 set -a
@@ -50,5 +48,3 @@ strap::abort() {
   done
   exit 1
 }
-
-set +a
