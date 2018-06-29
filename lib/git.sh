@@ -31,4 +31,10 @@ strap::git::remote::available() {
   git ls-remote "$url" >/dev/null 2>&1
 }
 
+strap::git::is_in_work_tree() {
+  local -r dir="${1:-}" && strap::assert::has_length "$dir" '$1 must be a directory path'
+  strap::assert "[ -d ${dir} ]" '$1 must be a directory'
+  $(cd "$dir"; git rev-parse --is-inside-work-tree >/dev/null 2>&1)
+}
+
 set +a
