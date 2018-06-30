@@ -135,13 +135,14 @@ setup() {
   [ ! -d "$STRAP_USER_HOME/packages/foo" ] # foo subdir shouldn't be there
 }
 
-@test "pkg: ensure fails when ls-remote fails" {
-  run strap::pkg::ensure 'com.github.ultimatedotfiles:straps:0.0.1'
+@test "pkg: ensure fails with missing git repo" {
+  run strap::pkg::ensure 'com.github.ultimatedotfiles:straps:0.0.1' #invalid id - no 'straps' repo
   [ "$status" -ne 0 ]
 }
 
 @test "pkg: ensure succeeds with HEAD rev" {
   run strap::pkg::ensure 'com.github.ultimatedotfiles:strap'
+  #echo "# output: $output" >&3
   [ "$status" -eq 0 ]
   dir="$STRAP_USER_HOME/packages/com/github/ultimatedotfiles/strap/HEAD"
   [ -d "$dir" ]
@@ -149,14 +150,25 @@ setup() {
 }
 
 @test "pkg: ensure calls git fetch with existing HEAD directory" {
+
+  local -r parent_dir="$STRAP_USER_HOME/packages/com/github/ultimatedotfiles/strap"
+  local -r dir="$parent_dir/HEAD"
+
   strap::pkg::ensure 'com.github.ultimatedotfiles:strap'
-  dir="$STRAP_USER_HOME/packages/com/github/ultimatedotfiles/strap/HEAD"
-  $(cd "$dir"; git checkout dummy-for-ci-do-not-delete)
-  [[ "$(cd "$dir"; git branch)" = "dummy-for-ci-do-not-delete" ]]
-  [ -d "$dir" ]
+  [ -d "$dir" ] #ensure dir was created as expected
+
+  local branch="$(cd "$dir"; git branch | grep '*')"
+  [ "$branch" = "* (HEAD detached at origin/master)" ] # ensure origin/master was checked out
+
+  $(cd "$dir"; git checkout dummy-for-ci-do-not-delete >/dev/null) # change it to something else
+
   run strap::pkg::ensure 'com.github.ultimatedotfiles:strap'
   [ "$status" -eq 0 ]
   [ -d "$dir" ]
-  [[ "$(cd "$dir"; git branch)" = "dummy-for-ci-do-not-delete" ]]
+
+  branch="$(cd "$dir"; git branch | grep '*')"
+  [ "$branch" = "* (HEAD detached at origin/master)" ] #ensure the change is reverted to origin/master
+
   rm -rf "$dir"
+  strap::pkg::dir::prune "$parent_dir"
 }

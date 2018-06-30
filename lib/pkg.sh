@@ -123,17 +123,18 @@ strap::pkg::ensure() {
 
   strap::pkg::id::dir::ensure "$id" # ensure the directory exists and it is an actual directory (not a file)
 
-  local -r rev="${dir##*/}" # dir is canonical and always ends with a rev, so get chars after the last '/'
+  local rev="${dir##*/}" # dir is canonical and always ends with a rev, so get chars after the last '/'
 
   if [[ -n "$(ls -A ${dir})" ]]; then # dir already has contents
 
     if [[ "$rev" = "HEAD" ]]; then
-      # HEAD means current origin HEAD, so we need to git fetch, and abort if that fails:
+      # HEAD means origin/HEAD, so we need to git fetch the origin, and abort if that fails:
       output="$(cd "$dir"; git fetch 2>&1)"
       if [[ "$?" -ne 0 ]]; then # git fetch failed
         strap::abort "Unable to update Strap package $id via \`git fetch\` in directory $dir: \n\n${output}\n\n"
       fi
       # otherwise git fetch succeeded and the directory's .git references are up to date
+
     else
       return 0 # $dir has contents and the $rev is not HEAD, so we already have the contents we need, just return
     fi
@@ -145,32 +146,23 @@ strap::pkg::ensure() {
     # https urls are recommended for GitHub per https://help.github.com/articles/which-remote-url-should-i-use/
     local -r url="$(strap::pkg::id::github::url::https "$id")"
 
-    if ! strap::git::remote::available "$url"; then
-      strap::pkg::dir::prune "$dir"
-      local -r msg="Unable to access Strap package $id via \`git ls-remote $url\`. If you are\
-sure the package id and resulting URL are correct, you may not have permissions to access the repository.  If\
-so, please contact the repository administrator and ask for read permissions."
-      strap::abort "$msg"
-    fi
-
-    # at this point, the local directory exists, and git ls-remote indicated that we can read from the repo, so
-    # let's clone it to that directory:
+    # let's try to clone to the directory:
     output="$(git clone "$url" "$dir" 2>&1)"
     if [[ "$?" -ne 0 ]]; then # git clone failed
       strap::pkg::dir::prune "$dir"
       strap::abort "Unable to download Strap package $id to directory $dir via \`git clone $url\`. If you are sure\
-      the package id and URL are correct, you may not have permissions to access the repository.  If so, please\
-      contact the repository administrator and ask for read permissions.  Command output: \n\n${output}\n\n"
+the package id and URL are correct, you may not have permissions to access the repository.  If so, please\
+contact the repository administrator and ask for read permissions.  git clone output: \n\n${output}\n\n"
     fi
 
   fi
 
+  # If rev is 'HEAD', it really means 'origin/HEAD' for Strap's purposes, so set that accordingly before checkout:
+  [[ "$rev" = "HEAD" ]] && rev="origin/HEAD"
+
   # ensure the checked-out repo reflects the specified rev:
-  local -r hash="$(cd "$dir"; git rev-parse -q --verify "$rev")"
-
-  if [[ -z "$hash" ]]; then
-    strap::abort "Invalid Strap package id $id: '$rev' does not equal a known git refname in cloned git directory $dir"
+  output="$(cd "$dir"; git checkout "$rev" 2>&1)"
+  if [[ "$?" -ne 0 ]]; then # checkout failed
+    strap::abort "Invalid strap package id $id: '$rev' does not equal a known git refname in cloned git directory $dir"
   fi
-
-  $(cd "$dir"; git checkout "$hash")
 }
