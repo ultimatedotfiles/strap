@@ -37,7 +37,6 @@ array_contains() {
   return 1
 }
 
-set -x
 STRAP_RUN_HOOK_PACKAGES=()
 # getopts loop logic from https://stackoverflow.com/a/28466267/407170
 declare args="${@:-}"
@@ -59,8 +58,7 @@ while getopts "p:-:" arg ${args}; do
   esac
 done
 shift $((OPTIND-1)) # remove parsed options and args from $@ list
-set +x
-echo "packages: ${STRAP_RUN_HOOK_PACKAGES[@]}"
+#echo "packages: ${STRAP_RUN_HOOK_PACKAGES[@]}"
 
 # Are we running interactive?
 STRAP_INTERACTIVE='' # assume not interactive by default
