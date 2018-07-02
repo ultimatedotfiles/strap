@@ -31,23 +31,27 @@ Q="$STRAP_QUIET_FLAG"
 
 STRAP_ISSUES_URL="https://github.com/ultimatedotfiles/strap/issues/new"
 
-STRAP_RUN_PACKAGES=()
+array_contains() {
+  local -r arr="${1:-}" value="${2:-}"
+  for e in "${arr[@]}"; do [[ "$e" = "$value" ]] && return 0; done
+  return 1
+}
+
+set -x
+STRAP_RUN_HOOK_PACKAGES=()
 # getopts loop logic from https://stackoverflow.com/a/28466267/407170
-while getopts "p:-:" arg ${@:-}; do
+declare args="${@:-}"
+while getopts "p:-:" arg ${args}; do
   case "$arg" in
-    #a )  ARG_A=true ;;
-    #p )  PLUGINS="$OPTARG" ;;
-    #c )  ARG_C=true ;;
     - )  LONG_OPTARG="${OPTARG#*=}"
          case $OPTARG in
-           with-hook-package=?* )  STRAP_RUN_PACKAGES+=("$LONG_OPTARG") ;;
-           with-hook-package*   )  echo "No arg for --$OPTARG option" >&2; exit 2 ;;
-           #alpha    )  ARG_A=true ;;
-           #bravo=?* )  ARG_B="$LONG_OPTARG" ;;
-           #bravo*   )  echo "No arg for --$OPTARG option" >&2; exit 2 ;;
-           #charlie  )  ARG_C=true ;;
-           #alpha* | charlie* )
-           #            echo "No arg allowed for --$OPTARG option" >&2; exit 2 ;;
+           with-hook-package=?* )
+             if [[ "${#STRAP_RUN_HOOK_PACKAGES[@]}" -eq 0 ]] || \
+                ! array_contains "${STRAP_RUN_HOOK_PACKAGES[@]}" "${LONG_OPTARG}" ]]; then # prevent adding the same package more than once
+               STRAP_RUN_HOOK_PACKAGES+=("$LONG_OPTARG")
+             fi
+             ;;
+           with-hook-package* )  echo "No arg for --$OPTARG option" >&2; exit 2 ;;
            '' )        break ;; # "--" terminates argument processing
            * )         echo "Illegal option --$OPTARG" >&2; exit 2 ;;
          esac ;;
@@ -55,6 +59,8 @@ while getopts "p:-:" arg ${@:-}; do
   esac
 done
 shift $((OPTIND-1)) # remove parsed options and args from $@ list
+set +x
+echo "packages: ${STRAP_RUN_HOOK_PACKAGES[@]}"
 
 # Are we running interactive?
 STRAP_INTERACTIVE='' # assume not interactive by default
@@ -488,19 +494,19 @@ strap::github::api::user::keys::ensure "$github_token" "$ssh_pub_key_contents"
 #############################################################
 # Run Hook Packages:
 #############################################################
-if [[ -n "$STRAP_RUN_PACKAGES" ]]; then
+if [[ "${#STRAP_RUN_HOOK_PACKAGES[@]}" -gt 0 ]]; then
 
   strap::bot "Run Hook Packages"
 
   strap::brew::ensure yq
 
   # ensure packages exist, or download and are valid:
-  for package_id in "${STRAP_RUN_PACKAGES[@]}"; do
+  for package_id in "${STRAP_RUN_HOOK_PACKAGES[@]}"; do
     strap::pkg::ensure "$package_id"
     strap::pkg::hook::path "$package_id" run >/dev/null # validates the package automatically
   done
 
-  for package_id in "${STRAP_RUN_PACKAGES[@]}"; do
+  for package_id in "${STRAP_RUN_HOOK_PACKAGES[@]}"; do
     dir="$(strap::pkg::id::dir "$package_id")"
     file="$(strap::pkg::hook::path "$package_id" run)"
 
