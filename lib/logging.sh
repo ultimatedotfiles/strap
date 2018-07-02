@@ -35,6 +35,7 @@ strap::error() {
 
 strap::abort() {
   local msg="${1:-}"
+  printf "\n\n"
   [[ -n "$msg" ]] && strap::error "$msg"
   local -r stack_depth="${#FUNCNAME[@]}"
   local i=0

@@ -169,8 +169,8 @@ The package identifier string format MUST adhere to the following definition:
 where
  * `github-account-name` equals a valid github username or organization name, for example `jsmith` or `ultimatedotfiles`
  * `package-name` equals a git repository name within the specified github account, for example `cool-package`
- * `package-version`, if present, equals a git `commit-ish` string that MUST be a tag, branch
-    or sha that can be provided as an argument to `git checkout`.
+ * `package-version`, if present, equals a git [refname](https://git-scm.com/docs/gitrevisions#gitrevisions-emltrefnamegtemegemmasterememheadsmasterememrefsheadsmasterem) that MUST be a tag, branch
+    or commit sha that can be provided as an argument to `git checkout`.
     
 A package release SHOULD always have a `package-version` string that conforms to the semantic version name scheme 
 defined in the [Semantic Versioning 2.0.0 specification](https://semver.org/spec/v2.0.0.html).
@@ -203,7 +203,7 @@ git checkout tags/1.0.2
 #### Strap Package Resolution Without `:package-version`
       
 If there is not a `:package-version` suffix in a `strap-package-id`, a `:package-version` value of `:HEAD` will be 
-assumed and the git repository's default branch will be used as the package source.
+assumed and the git repository's `origin/HEAD` will be used as the package source.
 
 For example, consider the following Strap package id:
 
@@ -213,6 +213,7 @@ This indicates the package source code will be obtained by (effectively) running
 
 ```bash
 git clone https://github.com/acme/hello
+
 ```
  
 and no specific branch will be checked out (implying the default branch will be used, which is `master` in most cases).
@@ -220,7 +221,7 @@ and no specific branch will be checked out (implying the default branch will be 
 > **WARNING**:
 > 
 > It is *strongly recommended to always specify a `:package-version` suffix* in every strap package idenfier to ensure
-> deterministic (repeatable) behavior.  Omitting `:package-version` suffixes - and relying on the `:master` default - 
+> deterministic (repeatable) behavior.  Omitting `:package-version` suffixes - and relying on the `:HEAD` default - 
 > can cause errors or problems during a `strap` run. Omission can be useful while developing a package, but it is 
 > recommended to provide a `:package-version` suffix at all other times.
 
@@ -263,7 +264,7 @@ Package ID of `com.github.acme:hello:1.0.2` will be used for illustration purpos
 
 A strap package is a folder containing:
 
-* A `package.yml` file
+* A `META/package.yml` file
 * Any number of bash scripts
 
 Assuming `https://github.com/acme/hello` was a strap package repository, here is an example of what its directory 
@@ -276,12 +277,13 @@ hooks/
     run
 lib/
     hello.sh
-package.yml
+META/
+    package.yml
 ```
 
 The above tree shows the following:
 
-* `package.yml` is a Strap package yaml file.  This file contains metadata about your package that Strap uses
+* `META/package.yml` is a Strap package yaml file.  This file contains metadata about your package that Strap uses
   to ensure your package can be referenced by other packages, as well as enable any Strap sub-commands your package
   might provide, and more.
 

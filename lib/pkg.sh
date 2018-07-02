@@ -116,11 +116,34 @@ strap::pkg::dir::prune() {
   done
 }
 
+strap::pkg::hook::path() {
+  local id="${1:-}" && strap::assert::has_length "$id" '$1 must be a Strap package id'
+  local hook_name="${2:-}" && strap::assert::has_length "$hook_name" '$2 must be a hook name'
+  local -r dir="$(strap::pkg::id::dir "$id")"
+
+  local file="$dir/package.yml"
+  [[ -f "$file" ]] || strap::abort "Package $id root directory does not contain a package.yml file."
+
+  local hook="$(yq r -j "$file" | jq -r ".hooks.run // empty")"
+  [[ -z "$hook" ]] && strap::abort "Package $id package.yml does not contain a hooks.${hook_name} entry"
+
+  # strip leading forward slash if any:
+  hook="${hook#/}"
+
+  file="$dir/$hook"
+  [[ -f "$file" ]] || strap::abort "Package $id package.yml hooks.${hook_name}: $hook is not a file."
+
+  echo "$file"
+}
+
 strap::pkg::ensure() {
   local id="${1:-}" && strap::assert::has_length "$id" '$1 must be a Strap package id'
   local -r dir="$(strap::pkg::id::dir "$id")"
   local output=
+  local parent=
   local cloned=false
+
+  strap::running "Checking package $id"
 
   strap::pkg::id::dir::ensure "$id" # ensure the directory exists and it is an actual directory (not a file)
 
@@ -137,6 +160,7 @@ strap::pkg::ensure() {
       # otherwise git fetch succeeded and the directory's .git references are up to date
 
     else
+      strap::ok
       return 0 # $dir has contents and the $rev is not HEAD, so we already have the contents we need, just return
     fi
 
@@ -149,12 +173,14 @@ strap::pkg::ensure() {
 
     # let's try to clone to the directory:
     cloned=true
-    output="$(git clone "$url" "$dir" 2>&1)"
-    if [[ "$?" -ne 0 ]]; then # git clone failed
-      strap::pkg::dir::prune "$dir"
-      strap::abort "Unable to download Strap package $id to directory $dir via \`git clone $url\`. If you are sure\
-the package id and URL are correct, you may not have permissions to access the repository.  If so, please\
-contact the repository administrator and ask for read permissions.  git clone output: \n\n${output}\n\n"
+    strap::action "Cloning $url"
+    if ! git clone "$url" "$dir" >/dev/null 2>&1; then # git clone failed
+      parent="$(dirname "$dir")"
+      rm -rf "$dir"
+      strap::pkg::dir::prune "$parent"
+      strap::abort "Unable to download Strap package $id via \`git clone $url\` to directory $dir. If you are sure \
+the package id and URL are correct, you may not have permissions to access the repository.  If so, please \
+contact the repository administrator and ask for read permissions."
     fi
 
   fi
@@ -163,13 +189,18 @@ contact the repository administrator and ask for read permissions.  git clone ou
   [[ "$rev" = "HEAD" ]] && rev="origin/HEAD"
 
   # ensure the checked-out repo reflects the specified rev:
-  output="$(cd "$dir"; git checkout "$rev" 2>&1)"
-  if [[ "$?" -ne 0 ]]; then # checkout failed
+  if ! (cd "$dir"; git checkout "$rev" >/dev/null 2>&1); then # checkout failed
 
     if [[ "$cloned" = true ]]; then # cleanup the dir we created:
-      strap::pkg::dir::prune "$dir"
+      parent="$(dirname "$dir")"
+      rm -rf "$dir"
+      strap::pkg::dir::prune "$parent"
     fi
 
     strap::abort "Invalid strap package id $id: '$rev' does not equal a known git refname in cloned git directory $dir"
   fi
+
+  strap::ok
 }
+
+set +a
