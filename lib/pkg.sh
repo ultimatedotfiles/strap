@@ -120,6 +120,7 @@ strap::pkg::ensure() {
   local id="${1:-}" && strap::assert::has_length "$id" '$1 must be a Strap package id'
   local -r dir="$(strap::pkg::id::dir "$id")"
   local output=
+  local cloned=false
 
   strap::pkg::id::dir::ensure "$id" # ensure the directory exists and it is an actual directory (not a file)
 
@@ -147,6 +148,7 @@ strap::pkg::ensure() {
     local -r url="$(strap::pkg::id::github::url::https "$id")"
 
     # let's try to clone to the directory:
+    cloned=true
     output="$(git clone "$url" "$dir" 2>&1)"
     if [[ "$?" -ne 0 ]]; then # git clone failed
       strap::pkg::dir::prune "$dir"
@@ -163,6 +165,11 @@ contact the repository administrator and ask for read permissions.  git clone ou
   # ensure the checked-out repo reflects the specified rev:
   output="$(cd "$dir"; git checkout "$rev" 2>&1)"
   if [[ "$?" -ne 0 ]]; then # checkout failed
+
+    if [[ "$cloned" = true ]]; then # cleanup the dir we created:
+      strap::pkg::dir::prune "$dir"
+    fi
+
     strap::abort "Invalid strap package id $id: '$rev' does not equal a known git refname in cloned git directory $dir"
   fi
 }
