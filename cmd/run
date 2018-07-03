@@ -237,7 +237,7 @@ ensure_strap_dotfile() {
     file="$HOME/$filename"
     strap::fs::file::ensure "$file" '600' "~/$filename"
 
-    strap::running "Checking ~/.strap/$strapname referenced in ~/$filename"
+    strap::running "Checking ~/$filename references ~/.strap/$strapname"
     if ! grep -q "$strapname" "$file"; then
       strap::action "Enabling ~/.strap/$strapname in ~/$filename"
       println "$file" ''
@@ -253,7 +253,7 @@ ensure_strap_dotfile 'strapenv' '.bash_profile' '.zshenv'
 ensure_strap_dotfile 'strapprofile' '.bash_profile' '.zprofile'
 ensure_strap_dotfile 'straprc' '.bashrc' '.zshrc'
 
-strap::running "Checking ~/.bashrc in ~/.bash_profile per bash user guide recommendations"
+strap::running "Checking ~/.bash_profile references ~/.bashrc per bash user guide recommendations"
 file="$HOME/.bash_profile"
 if ! grep -q ".bashrc" "$file"; then
   println "$file" ''

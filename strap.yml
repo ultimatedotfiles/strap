@@ -37,3 +37,16 @@ git:
     core.autocrlf: input
     push.default: simple
     branch.autosetupmerge: always
+
+
+hooks:
+  dependencies:
+    - com.github.lhazlewood:strap-hello:1.0.0
+  run:
+    items:
+      - ospkg gnupg, httpie, liquidprompt, java8, jenv
+      - jenv plugin ensure export
+      - jenv plugin ensure maven
+      - jenv plugin ensure groovy
+      - jenv plugin ensure gradle
+      - jenv plugin ensure springboot
