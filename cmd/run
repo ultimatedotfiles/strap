@@ -16,7 +16,6 @@ strap::lib::import sudo || source ../lib/sudo.sh
 strap::lib::import fs || source ../lib/fs.sh
 strap::lib::import pkg || source ../lib/pkg.sh
 
-STRAP_DEBUG="${STRAP_DEBUG:-}"
 STRAP_SCRIPT="${STRAP_SCRIPT:-}" && [[ -z "$STRAP_SCRIPT" ]] && echo "STRAP_SCRIPT is not set" && exit 1
 STRAP_HOME="${STRAP_HOME:-}" && [[ -z "$STRAP_HOME" ]] && echo "STRAP_HOME is not set" && exit 1
 STRAP_USER_HOME="${STRAP_USER_HOME:-}" && [[ -z "$STRAP_USER_HOME" ]] && echo "STRAP_USER_HOME is not set" && exit 1
@@ -212,10 +211,10 @@ strap::ok
 
 strap::bot "Shell Init Files"
 
-STRAP_SHELL=$(basename "$SHELL")
-STRAP_SHELL_ENV_FILE="${STRAP_USER_HOME:-}/strapenv"
-STRAP_SHELL_PROFILE_FILE="${STRAP_USER_HOME:-}/strapprofile"
-STRAP_SHELL_RC_FILE="${STRAP_USER_HOME:-}/straprc"
+declare -rx STRAP_SHELL=$(basename "$SHELL")
+declare -rx STRAP_SHELL_ENV_FILE="${STRAP_USER_HOME:-}/strapenv"
+declare -rx STRAP_SHELL_PROFILE_FILE="${STRAP_USER_HOME:-}/strapprofile"
+declare -rx STRAP_SHELL_RC_FILE="${STRAP_USER_HOME:-}/straprc"
 
 # ~/.strap/strapenv support #################################
 
