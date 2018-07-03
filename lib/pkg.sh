@@ -116,24 +116,45 @@ strap::pkg::dir::prune() {
   done
 }
 
-strap::pkg::hook::path() {
-  local id="${1:-}" && strap::assert::has_length "$id" '$1 must be a Strap package id'
-  local hook_name="${2:-}" && strap::assert::has_length "$hook_name" '$2 must be a hook name'
-  local -r dir="$(strap::pkg::id::dir "$id")"
+strap::pkg::yaml::path() {
+  local -r arg="${1:-}" && strap::assert::has_length "$arg" '$1 must be a Strap package id or directory'
+  local dir=
+
+  if [[ -d "$arg" ]]; then
+    dir="$arg"
+  else
+    dir="$(strap::pkg::id::dir "$arg")"
+  fi
 
   local file="$dir/package.yml"
-  [[ -f "$file" ]] || strap::abort "Package $id root directory does not contain a package.yml file."
+  strap::assert "[ -f $file ]" "Package directory $dir does not contain a package.yml file."
 
-  local hook="$(yq r -j "$file" | jq -r ".hooks.run // empty")"
-  [[ -z "$hook" ]] && strap::abort "Package $id package.yml does not contain a hooks.${hook_name} entry"
+  echo "$file"
+}
+
+strap::pkg::yaml::jq() {
+  local -r file="${1:-}" && strap::assert "[ -f $file ]" '$1 must be a Strap package.yml file'
+  local -r query="${2:-}" && strap::assert::has_length "$query" '$2 must be a jq query string'
+  echo "$(yq r -j "$file" | jq -r "$query")"
+}
+
+strap::pkg::yaml::hook::path() {
+  local -r arg="${1:-}" && strap::assert::has_length "$arg" '$1 must be a Strap package id or directory'
+  local -r hook_name="${2:-}" && strap::assert::has_length "$hook_name" '$2 must be a hook name'
+  local -r file="$(strap::pkg::yaml::path "$arg")"
+  local -r dir="$(dirname "$file")"
+
+  local hook="$(strap::pkg::yaml::jq "$file" ".hooks.${hook_name} // empty")"
+
+  [[ -z "$hook" ]] && strap::abort "Package $arg package.yml does not contain a hooks.${hook_name} entry"
 
   # strip leading forward slash if any:
   hook="${hook#/}"
 
-  file="$dir/$hook"
-  [[ -f "$file" ]] || strap::abort "Package $id package.yml hooks.${hook_name}: $hook is not a file."
+  local -r hook_file="$dir/$hook"
+  [[ -f "$hook_file" ]] || strap::abort "Package $arg package.yml hooks.${hook_name}: $hook is not a file."
 
-  echo "$file"
+  echo "$hook_file"
 }
 
 strap::pkg::ensure() {

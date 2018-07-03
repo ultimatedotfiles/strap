@@ -521,14 +521,12 @@ if [[ "${#STRAP_RUN_HOOK_PACKAGES[@]}" -gt 0 ]]; then
 
   # ensure packages exist, or download and are valid:
   for package_id in "${STRAP_RUN_HOOK_PACKAGES[@]}"; do
-    strap::pkg::ensure "$package_id"
-    strap::pkg::hook::path "$package_id" run >/dev/null # validates the package automatically
+    [[ -d "$package_id" ]] || strap::pkg::ensure "$package_id"
+    strap::pkg::yaml::hook::path "$package_id" run >/dev/null # validates the package automatically
   done
 
   for package_id in "${STRAP_RUN_HOOK_PACKAGES[@]}"; do
-    dir="$(strap::pkg::id::dir "$package_id")"
-    file="$(strap::pkg::hook::path "$package_id" run)"
-
+    file="$(strap::pkg::yaml::hook::path "$package_id" run)"
     if ! bash "$file"; then
       strap::abort "Unable to execute package $package_id hook $file"
     fi
