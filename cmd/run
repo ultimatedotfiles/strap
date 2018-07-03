@@ -285,7 +285,7 @@ strap::ok
 
 strap::lib::import brew || source ../lib/brew.sh
 
-strap::running "Checking ~/.strap/strapenv check for homebrew \$PATH entries"
+strap::running "Ensuring Homebrew \$PATH entries in ~/.strap/strapenv"
 if ! grep -q "homebrew:begin" $STRAP_SHELL_ENV_FILE; then
   #strap::action "Adding ~/.strap/strapenv check for homebrew \$PATH entries"
   file="$STRAP_HOME/etc/profile.d/homebrewenv.sh"
