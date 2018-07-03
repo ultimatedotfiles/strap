@@ -213,42 +213,55 @@ strap::ok
 strap::bot "Shell Init Files"
 
 STRAP_SHELL=$(basename "$SHELL")
-STRAP_SHELL_INIT_FILE="${STRAP_USER_HOME:-}/straprc"
-file="$STRAP_SHELL_INIT_FILE"
+STRAP_SHELL_ENV_FILE="${STRAP_USER_HOME:-}/strapenv"
+STRAP_SHELL_PROFILE_FILE="${STRAP_USER_HOME:-}/strapprofile"
+STRAP_SHELL_RC_FILE="${STRAP_USER_HOME:-}/straprc"
 
-file_existed=false && [[ -f "$file" ]] && file_existed=true
-strap::fs::file::ensure "$file" 'u+rw' '~/.strap/straprc'
-[[ "$file_existed" != true ]] && cat "$STRAP_HOME/etc/profile.d/straprc" > "$file"
+# ~/.strap/strapenv support #################################
 
-declare -a filenames=(".bashrc" ".zshrc")
-for filename in "${filenames[@]}"; do
+ensure_strap_dotfile() {
+  local strapname="${1:-}"; strap::assert::has_length "$strapname" '$1 must be a strap dotfile name'
+  shift 1
+  strap::assert::has_length "$@" 'One or more dotfile names must be specified after the strap dotfile name'
+  local strapfile="$STRAP_USER_HOME/$strapname"
+  local filename=
+  local file=
 
-  file="$HOME/$filename"
+  rm -rf "$strapfile" # always start fresh
+  cp "$STRAP_HOME/etc/profile.d/$strapname" "$strapfile"
+  chmod 600 "$strapfile"
 
-  strap::fs::file::ensure "$file" 'u+rw' "~/$filename"
+  IFS=' ' read -a filenames <<< "$@"
+  for filename in "${filenames[@]}"; do
 
-  strap::running "Checking ~/.strap/straprc referenced in ~/$filename"
-  if ! grep -q "$STRAP_SHELL_INIT_FILE" "$file"; then
-    strap::action "Enabling ~/.strap/straprc in ~/$filename"
-    println "$file" ''
-    println "$file" '# strap:begin'
-    println "$file" "[ -f \"$STRAP_SHELL_INIT_FILE\" ] && . \"$STRAP_SHELL_INIT_FILE\""
-    println "$file" '# strap:end'
-  fi
-  strap::ok
-done
+    file="$HOME/$filename"
+    strap::fs::file::ensure "$file" '600' "~/$filename"
 
-file="$HOME/.bash_profile"
-strap::fs::file::ensure "$file" 'u+rw' '~/.bash_profile'
+    strap::running "Checking ~/.strap/$strapname referenced in ~/$filename"
+    if ! grep -q "$strapname" "$file"; then
+      strap::action "Enabling ~/.strap/$strapname in ~/$filename"
+      println "$file" ''
+      println "$file" "# strap:$strapname:begin"
+      println "$file" "[ -r \"\$HOME/.strap/$strapname\" ] && . \"\$HOME/.strap/$strapname\""
+      println "$file" "# strap:$strapname:end"
+    fi
+    strap::ok
+  done
+}
+
+ensure_strap_dotfile 'strapenv' '.bash_profile' '.zshenv'
+ensure_strap_dotfile 'strapprofile' '.bash_profile' '.zprofile'
+ensure_strap_dotfile 'straprc' '.bashrc' '.zshrc'
 
 strap::running "Checking ~/.bashrc in ~/.bash_profile per bash user guide recommendations"
-if ! grep -q "bashrc" "$file"; then
+file="$HOME/.bash_profile"
+if ! grep -q ".bashrc" "$file"; then
   println "$file" ''
-  println "$file" '# strap:begin'
+  println "$file" '# strap:bashrc:begin'
   println "$file" '# source .bashrc from within .bash_profile per bash user guide: '
   println "$file" '# https://www.gnu.org/software/bash/manual/html_node/Bash-Startup-Files.html'
-  println "$file" '[ -f "$HOME/.bashrc" ] && . "$HOME/.bashrc"'
-  println "$file" '# strap:end'
+  println "$file" '[ -r "$HOME/.bashrc" ] && . "$HOME/.bashrc"'
+  println "$file" '# strap:bashrc:end'
 fi
 strap::ok
 
@@ -272,13 +285,13 @@ strap::ok
 
 strap::lib::import brew || source ../lib/brew.sh
 
-strap::running "Checking ~/.strap/straprc check for homebrew bin \$PATH entry"
-if ! grep -q "homebrew:begin" $STRAP_SHELL_INIT_FILE; then
-  strap::action "Adding ~/.strap/straprc check for homebrew bin \$PATH entry"
-  file="$STRAP_HOME/etc/profile.d/homebrew.sh"
+strap::running "Checking ~/.strap/strapenv check for homebrew \$PATH entries"
+if ! grep -q "homebrew:begin" $STRAP_SHELL_ENV_FILE; then
+  #strap::action "Adding ~/.strap/strapenv check for homebrew \$PATH entries"
+  file="$STRAP_HOME/etc/profile.d/homebrewenv.sh"
   [[ ! -f "$file" ]] && strap::abort "Invalid strap installation. Missing file: $file"
-  echo "" >> "$STRAP_SHELL_INIT_FILE"
-  cat "$file" >> "$STRAP_SHELL_INIT_FILE"
+  echo "" >> "$STRAP_SHELL_ENV_FILE"
+  cat "$file" >> "$STRAP_SHELL_ENV_FILE"
 fi
 strap::ok
 
@@ -311,7 +324,7 @@ strap::brew::ensure 'git'
 strap::brew::ensure 'jq' # needed for parsing github responses
 
 file="$HOME/.gitconfig"
-strap::fs::file::ensure "$file" 700 "~/.gitconfig"
+strap::fs::file::ensure "$file" 600 "~/.gitconfig"
 
 strap::lib::import git || source ../lib/git.sh
 strap::lib::import github || source ../lib/github.sh
@@ -402,6 +415,14 @@ if strap::semver::compare "$STRAP_OS_VERSION" '>=' '10.12.2'; then
   if [[ -n "$all_hosts_entry" ]]; then
     strap::ok
 
+    strap::running "Checking 'IgnoreUnknown' for 'Host *' entry in ~/.ssh/config"
+    if ! echo "$all_hosts_entry" | grep -q 'IgnoreUnknown'; then
+      # The 'Host *' directive doesn't have an IgnoreUnknown line - add one:
+      strap::action "Adding 'IgnoreUnknown AddKeysToAgent,UseKeychain' for 'Host *' entry in ~/.ssh/config"
+      file_contents="$(echo "$file_contents" | awk '1;/Host \*/{print "  IgnoreUnknown AddKeysToAgent,UseKeychain"}')"
+    fi
+    strap::ok
+
     strap::running "Checking 'AddKeysToAgent' for 'Host *' entry in ~/.ssh/config"
     if ! echo "$all_hosts_entry" | grep -q 'AddKeysToAgent'; then
       # The 'Host *' directive doesn't have an AddKeysToAgent line - add one:
@@ -426,6 +447,7 @@ if strap::semver::compare "$STRAP_OS_VERSION" '>=' '10.12.2'; then
     strap::action "Creating global 'Host *' entry in ~/.ssh/config"
     [[ -z "$file_contents" ]] && echo '' >> "$file"
     echo 'Host *' >> "$file"
+    echo '  IgnoreUnknown AddKeysToAgent,UseKeychain' >> "$file"
     echo '  UseKeychain yes' >> "$file"
     echo '  AddKeysToAgent yes' >> "$file"
     strap::ok
