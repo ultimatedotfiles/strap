@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -Eeo pipefail # https://vaneyckt.io/posts/safer_bash_scripts_with_set_euxo_pipefail/
+set -Eeuo pipefail # https://vaneyckt.io/posts/safer_bash_scripts_with_set_euxo_pipefail/
 
 # see https://misc.flogisoft.com/bash/tip_colors_and_formatting
 #     https://unix.stackexchange.com/a/269085
@@ -84,3 +84,5 @@ FONT_ERRCROSS="\xE2\x9D\x8C "
 #for color in "${FG[@]}"; do
 #  echo -e "Hello $(font_style -ui ${color}World!)"
 #done
+
+set +a

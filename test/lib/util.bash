@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -a
+
 strap::test::fs::readlink() {
   $(type -p greadlink readlink | head -1) "$1" # prefer greadlink if it exists
 }
@@ -39,10 +41,11 @@ strap::test::fs::path() {
   echo "$target"
 }
 
-TEST_LIB_UTIL_SCRIPT="$(strap::test::fs::path "${BASH_SOURCE[0]}")"
-TEST_LIB_DIR="$(dirname "$TEST_LIB_UTIL_SCRIPT")"
-STRAP_HOME="$(strap::test::fs::path "$TEST_LIB_DIR/../..")"
-STRAP_USER_HOME="$(strap::test::fs::path "$HOME/.strap")"
+STRAP_HOME="$(strap::test::fs::path "$BATS_TEST_DIRNAME/../..")"
+STRAP_USER_HOME="$HOME/.strap"
 STRAP_LIB_DIR="$STRAP_HOME/lib"
+STRAP_PLUGIN_LIB_DIR="$STRAP_LIB_DIR"
+
+set +a
 
 command -v strap::lib::import >/dev/null || . "$STRAP_LIB_DIR/lib.sh"

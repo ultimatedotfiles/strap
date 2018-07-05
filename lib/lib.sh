@@ -2,8 +2,7 @@
 
 set -Eeuo pipefail # https://vaneyckt.io/posts/safer_bash_scripts_with_set_euxo_pipefail/
 
-[[ -z "$STRAP_LIB_DIR" ]] && echo "STRAP_LIB_DIR is not set." >&2 && exit 1
-#[[ -z "$STRAP_PLUGINS_DIR" ]] && echo "STRAP_PLUGINS_DIR is not set." >&2 && exit 1
+[[ -z "${STRAP_LIB_DIR:-}" ]] && echo "STRAP_LIB_DIR is not set." >&2 && exit 1
 STRAP_PLUGIN_LIB_DIR="${STRAP_PLUGIN_LIB_DIR:-}"
 STRAP_LIB_LOADED_LIBS="${STRAP_LIB_LOADED_LIBS:-}"
 
@@ -13,6 +12,17 @@ strap::lib::import() {
   local plugin=
   local dir=
   local file=
+  local oldopts=
+
+  # preserve options in case $file changes them
+  # see https://unix.stackexchange.com/questions/383541/how-to-save-restore-all-shell-options-including-errexit for more
+  oldopts=$(set +o)
+  case $- in
+    *e*) oldopts="$oldopts; set -e";;
+    *  ) oldopts="$oldopts; set +e";;
+  esac
+
+  set -Eeuo pipefail # https://vaneyckt.io/posts/safer_bash_scripts_with_set_euxo_pipefail/
 
   if [[ "$#" -gt "1" ]]; then
     plugin="$1"
@@ -51,7 +61,16 @@ strap::lib::import() {
      return 1
   fi
 
+  # restore options before sourcing:
+  set +vx; eval "$oldopts"
+  # ensure our defaults for all scripts.  A script can change this if desired, but this is Straps default for safety:
+  set -Eeuo pipefail
+
   source "$file"
+
+  # restore options after sourcing:
+  set +vx; eval "$oldopts"
+  set -Eeuo pipefail
 
   if [[ -z "$STRAP_LIB_LOADED_LIBS" ]]; then
     STRAP_LIB_LOADED_LIBS="$libname"

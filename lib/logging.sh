@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -Eeo pipefail # https://vaneyckt.io/posts/safer_bash_scripts_with_set_euxo_pipefail/
+set -Eeuo pipefail # https://vaneyckt.io/posts/safer_bash_scripts_with_set_euxo_pipefail/
 strap::lib::import fonts || . fonts.sh
 
 set -a
@@ -49,3 +49,5 @@ strap::abort() {
   done
   exit 1
 }
+
+set +a

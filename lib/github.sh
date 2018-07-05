@@ -13,6 +13,8 @@ __STRAP_GITHUB_USER_JSON="${__STRAP_GITHUB_USER_JSON:-}"
 __STRAP_GITHUB_USER_EMAILS_JSON="${__STRAP_GITHUB_USER_EMAILS_JSON:-}"
 __STRAP_GITHUB_USER_KEYS_JSON="${__STRAP_GITHUB_USER_KEYS_JSON:-}"
 
+set -a
+
 strap::github::user::ensure() {
 
   local github_username="$(git config --global github.user || true)"
@@ -302,3 +304,5 @@ strap::github::api::user::keys::ensure() {
 
   strap::ok
 }
+
+set +a

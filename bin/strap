@@ -79,14 +79,9 @@ declare -rx STRAP_SCRIPT="$(strap::fs::path "${BASH_SOURCE[0]}")"
 declare -rx STRAP_WORKING_DIR="$(pwd)"
 
 # strap installation directory constants:
-STRAP_HOME="${STRAP_HOME:-}"
-if [[ -z "$STRAP_HOME" ]]; then
-  strap_script_dir="$(dirname "$STRAP_SCRIPT")"
-  STRAP_HOME="$(strap::fs::path "$strap_script_dir/..")"
-fi
-declare -rx STRAP_HOME
+strap_script_dir="$(dirname "$STRAP_SCRIPT")"
+declare -rx STRAP_HOME="$(strap::fs::path "$strap_script_dir/..")"
 declare -rx STRAP_LIB_DIR="$STRAP_HOME/lib"
-#declare -rx STRAP_PLUGINS_DIR="$STRAP_HOME/plugins"
 declare -rx STRAP_CMD_DIR="$STRAP_HOME/cmd"
 
 # user-specific constants:
@@ -94,11 +89,10 @@ declare -rx STRAP_USER="$(logname)"
 STRAP_USER_HOME="${STRAP_USER_HOME:-}"
 [[ -z "$STRAP_USER_HOME" ]] && STRAP_USER_HOME="$(strap::fs::path "$HOME/.strap")"
 declare -rx STRAP_USER_HOME
-mkdir -p "$STRAP_USER_HOME"
+mkdir -p "$STRAP_USER_HOME" || { echo "Unable to ensure STRAP_USER_HOME directory $STRAP_USER_HOME is available." >&2; return 1; }
 
 exit_if_missing "$STRAP_HOME" STRAP_HOME
 exit_if_missing "$STRAP_LIB_DIR" STRAP_LIB_DIR
-#xit_if_missing "$STRAP_PLUGINS_DIR" STRAP_PLUGINS_DIR
 exit_if_missing "$STRAP_CMD_DIR" STRAP_CMD_DIR
 unset -f exit_if_missing
 
@@ -106,7 +100,6 @@ unset -f exit_if_missing
 export STRAP_PLUGIN_HOME="$STRAP_HOME"
 export STRAP_PLUGIN_LIB_DIR="$STRAP_LIB_DIR"
 export STRAP_PLUGIN_CMD_DIR="$STRAP_CMD_DIR"
-#export STRAP_PLUGIN_PLUGINS_DIR="$STRAP_PLUGINS_DIR"
 
 . "$STRAP_LIB_DIR/lib.sh" || . ../lib/lib.sh
 strap::lib::import fonts || . ../lib/fonts.sh
