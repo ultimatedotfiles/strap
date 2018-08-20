@@ -6,4 +6,4 @@
 # ~/.bash_profile or ~/.zshenv file *after* the line that sources $HOME/.strap/strapenv
 #
 
-export PATH="$HOME/.strap/releases/current/bin"
+export PATH="$HOME/.strap/releases/current/bin:$PATH"
