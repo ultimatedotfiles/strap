@@ -18,6 +18,7 @@ strap::lib::import pkg || source ../lib/pkg.sh
 
 STRAP_SCRIPT="${STRAP_SCRIPT:-}" && [[ -z "$STRAP_SCRIPT" ]] && echo "STRAP_SCRIPT is not set" && exit 1
 STRAP_HOME="${STRAP_HOME:-}" && [[ -z "$STRAP_HOME" ]] && echo "STRAP_HOME is not set" && exit 1
+STRAP_USER="${STRAP_USER:-}" && [[ -z "$STRAP_USER" ]] && echo "STRAP_USER is not set" && exit 1
 STRAP_USER_HOME="${STRAP_USER_HOME:-}" && [[ -z "$STRAP_USER_HOME" ]] && echo "STRAP_USER_HOME is not set" && exit 1
 STRAP_CMD_DIR="${STRAP_CMD_DIR:-}" && [[ -z "$STRAP_CMD_DIR" ]] && echo "STRAP_CMD_DIR is not set" && exit 1
 STRAP_LIB_DIR="${STRAP_LIB_DIR:-}" && [[ -z "$STRAP_LIB_DIR" ]] && echo "STRAP_LIB_DIR is not set" && exit 1
@@ -192,7 +193,9 @@ xcode_license() {
 }
 xcode_license
 
-# --------------
+#############################################################
+# Apple Software Updates:
+#############################################################
 
 strap::bot "Apple Software Updates"
 
@@ -202,6 +205,26 @@ if ! sudo softwareupdate -l 2>&1 | grep -q 'No new software available.'; then
   echo
   sudo softwareupdate --install --all
   xcode_license
+fi
+strap::ok
+
+#############################################################
+# Ansible
+#############################################################
+
+strap::bot 'Ansible'
+
+strap::running 'Checking Ansible'
+if ! command -v ansible >/dev/null 2>&1; then
+
+  strap::action "Installing ansible via pip"
+
+  if ! command -v pip >/dev/null 2>&1; then # pip isn't available, install it
+    curl -s https://bootstrap.pypa.io/get-pip.py | sudo -H python
+  fi
+
+  sudo -H pip install ansible --quiet
+
 fi
 strap::ok
 
@@ -496,7 +519,7 @@ strap::fs::file::ensure "$ssh_pub_key" 400 "~/.ssh/id_rsa.pub"
 
 strap::bot "GitHub SSH"
 
-github_ssh_known_host_entry="github.com ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAq2A7hRGmdnm9tUDbO9IDSwBK6TbQa+PXYPCPy6rbTrTtw7PHkccKrpp0yVhp5HdEIcKr6pLlVDBfOLX9QUsyCOV0wzfjIJNlGEYsdlLJizHhbn2mUjvSAHQqZETYP81eFzLQNnPHt4EVVUh7VfDESU84KezmD5QlWpXLmvU31/yMf+Se8xhHTvKSCZIFImWwoG6mbUoWf9nzpIoaSjB+weqqUUmpaaasXVal72J+UX2B+2RPW3RcT0eOzQgqlJL3RKrTJvdsjE3JEAvGq3lGHSZXy28G3skua2SmVi/w4yCE6gbODqnTWlg7+wC604ydGXA8VJiS5ap43JXiUFFAaQ=="
+github_ssh_known_host_entry='github.com ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAq2A7hRGmdnm9tUDbO9IDSwBK6TbQa+PXYPCPy6rbTrTtw7PHkccKrpp0yVhp5HdEIcKr6pLlVDBfOLX9QUsyCOV0wzfjIJNlGEYsdlLJizHhbn2mUjvSAHQqZETYP81eFzLQNnPHt4EVVUh7VfDESU84KezmD5QlWpXLmvU31/yMf+Se8xhHTvKSCZIFImWwoG6mbUoWf9nzpIoaSjB+weqqUUmpaaasXVal72J+UX2B+2RPW3RcT0eOzQgqlJL3RKrTJvdsjE3JEAvGq3lGHSZXy28G3skua2SmVi/w4yCE6gbODqnTWlg7+wC604ydGXA8VJiS5ap43JXiUFFAaQ=='
 
 strap::running "Checking github.com in ~/.ssh/known_hosts"
 if ! grep "^github.com" "$ssh_known_hosts_file" >/dev/null 2>&1; then
