@@ -1,21 +1,47 @@
 #!/usr/bin/env bash
 
+STRAP_RELEASE_REF="${1:-}" && [ -z "$STRAP_RELEASE_REF" ] && STRAP_RELEASE_REF='master'
+
 user_strap_dir="$HOME/.strap"
 mkdir -p "$user_strap_dir"
 
 releases_dir="$user_strap_dir/releases"
 mkdir -p "$releases_dir"
 
-file="$releases_dir/master.zip"
+file="$releases_dir/${STRAP_RELEASE_REF}.zip"
 rm -rf "$file"
 
-curl -fsSL http://github.com/ultimatedotfiles/strap/archive/master.zip -o "$file"
+STRAP_RELEASE_URL="https://github.com/ultimatedotfiles/strap/archive/${STRAP_RELEASE_REF}.zip"
 
-release_dir="$releases_dir/master"
+if command -v wget >/dev/null; then
+  wget -qO "$file" "$STRAP_RELEASE_URL"
+elif command -v curl >/dev/null; then
+  curl -fsSL "$STRAP_RELEASE_URL" -o "$file"
+else
+  echo "Neither wget nor curl are available.  Cannot download strap." >&2
+  exit 1
+fi
+
+release_dir="$releases_dir/${STRAP_RELEASE_REF}"
 
 rm -rf "$release_dir"
-unzip -q "$file" -d "$releases_dir"
-mv "$releases_dir/strap-master" "$release_dir"
+mkdir -p "$release_dir"
+
+unzip-strip() {
+    local zip="${1:-}" && [[ -z "$zip" ]] && { echo '$1 must be a zip file' >&2; return 1; }
+    local dest="${2:-.}"
+    local temp="$(mktemp -d 2>/dev/null || mktemp -d -t 'strap_dl_temp_dir')" && \
+               unzip -q -d "$temp" "$zip" && mkdir -p "$dest" && \
+               shopt -s dotglob && local f=("$temp"/*) && \
+    if (( ${#f[@]} == 1 )) && [[ -d "${f[0]}" ]] ; then
+        mv "$temp"/*/* "$dest"
+    else
+        mv "$temp"/* "$dest"
+    fi && rm -rf "$temp"
+}
+
+unzip-strip "$file" "$release_dir"
+
 rm -rf "$file"
 
 rm -rf "$releases_dir/current"

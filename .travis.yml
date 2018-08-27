@@ -1,0 +1,46 @@
+---
+sudo: required
+language: bash
+matrix:
+  include:
+  - name: "Ubuntu 14.04 Trusty"
+    dist: trusty
+  - name: "Mac OS 10.13 High Sierra"
+    os: osx
+    osx_image: xcode9.4
+  - name: "Mac OS 10.12 Sierra"
+    os: osx
+    osx_image: xcode9.2
+    env: STRAP_ROOT_ALLOWED=true
+  - name: "Mac OS 10.11 El Capitan"
+    os: osx
+    osx_image: xcode8
+  - name: "Mac OS 10.10 Yosemite"
+    os: osx
+    osx_image: xcode6.4
+
+#branches:
+#  only:
+#  - master
+#  - /^\d+\.\d+(\.\d+)?(-\S*)?$/
+
+before_install:
+  # Remove the developer environment that travis installs by default - we need to ensure our script installs these things
+  - if [[ -n "$TRAVIS_OSX_IMAGE" ]]; then brew cleanup; fi
+  - URL=https://raw.githubusercontent.com/Homebrew/install/master/uninstall
+  - if [[ -n "$TRAVIS_OSX_IMAGE" ]]; then curl -sLO "${URL}"; fi
+  - if [[ -n "$TRAVIS_OSX_IMAGE" ]]; then chmod +x uninstall; fi
+  - if [[ -n "$TRAVIS_OSX_IMAGE" ]]; then ./uninstall --force; fi
+  - rm -rf /usr/local/Homebrew
+  - sudo rm -rf /usr/local/Caskroom
+  - sudo rm -rf /usr/local/bin/brew
+  - sudo rm -rf /Library/Developer/CommandLineTools
+  - bash --version
+  - export STRAP_SUDO_PROMPT=false # lib/sudo.sh: don't need to prompt for password on Travis
+
+install: false
+
+script:
+
+# Run the script:
+- bin/strap run && bin/strap run; # run second time for idempotence checks

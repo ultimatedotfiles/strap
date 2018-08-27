@@ -1,0 +1,101 @@
+#!/usr/bin/env bash
+
+# NOTE:
+
+# this file contains the mac-specific things that were removed from bin/run and need to be added back in for
+# mac-only execution.
+
+# This file shouldn't exist.  Ideally everything in here should be ported over to ansible roles.
+
+#############################################################
+# System Defaults
+#############################################################
+
+strap::bot "System Defaults"
+
+# --------------
+
+strap::running "Checking security settings"
+defaults write com.apple.Safari com.apple.Safari.ContentPageGroupIdentifier.WebKit2JavaEnabled -bool false
+defaults write com.apple.Safari com.apple.Safari.ContentPageGroupIdentifier.WebKit2JavaEnabledForLocalFiles -bool false
+sudo defaults write com.apple.screensaver askForPassword -int 1
+sudo defaults write com.apple.screensaver askForPasswordDelay -int 0
+sudo defaults write /Library/Preferences/com.apple.alf globalstate -int 1
+sudo launchctl load /System/Library/LaunchDaemons/com.apple.alf.agent.plist 2>/dev/null
+
+#if [ -n "$STRAP_GIT_NAME" ] && [ -n "$STRAP_GIT_EMAIL" ]; then
+#  sudo defaults write /Library/Preferences/com.apple.loginwindow \
+#    LoginwindowText \
+#    "Found this computer? Please contact $STRAP_GIT_NAME at $STRAP_GIT_EMAIL."
+#fi
+strap::ok
+
+# --------------
+
+# Check and enable full-disk encryption.
+strap::running "Checking full-disk encryption status"
+if fdesetup status | grep $Q -E "FileVault is (On|Off, but will be enabled after the next restart)."; then
+  strap::ok
+elif [ -n "$STRAP_INTERACTIVE" ]; then
+  strap::action "Enabling full-disk encryption on next reboot:"
+  sudo fdesetup enable -user "$STRAP_USER" | tee ~/Desktop/"FileVault Recovery Key.txt"
+  strap::ok
+else
+  echo && strap::abort "Run 'sudo fdesetup enable -user \"$STRAP_USER\"' to enable full-disk encryption."
+fi
+
+# --------------
+
+strap::running "Checking keyboard and finder settings"
+# speed up the keyboard.  Defaults are *slow* for developers:
+restart_finder=false
+defaults write -g KeyRepeat -int 2
+defaults write -g InitialKeyRepeat -int 14
+if [ "$(defaults read com.apple.finder AppleShowAllFiles)" != "YES" ]; then
+  defaults write com.apple.finder AppleShowAllFiles YES; # show hidden files
+  restart_finder=true
+fi
+if [ "$(defaults read NSGlobalDomain AppleShowAllExtensions)" != "1" ]; then
+  defaults write NSGlobalDomain AppleShowAllExtensions -bool true # show all file extensions
+  restart_finder=true
+fi
+[ $restart_finder = true ] && sudo killall Finder >/dev/null 2>&1
+strap::ok
+
+#############################################################
+# Apple Software Updates:
+#############################################################
+
+strap::bot "Apple Software Updates"
+
+strap::running "Checking Apple software updates"
+if ! sudo softwareupdate -l 2>&1 | grep -q 'No new software available.'; then
+  strap::action "Installing Apple software updates. This could take a while"
+  echo
+  sudo softwareupdate --install --all
+  xcode_license
+fi
+strap::ok
+
+#############################################################
+# Homebrew:
+#############################################################
+
+strap::running "Checking Homebrew Cask:"
+if ! brew tap | grep ^caskroom/cask$ >/dev/null 2>&1; then
+  strap::action "Tapping caskroom/cask"
+  brew tap caskroom/cask
+fi
+strap::ok
+
+strap::running "Checking Homebrew Versions:"
+if ! brew tap | grep ^caskroom/versions$ >/dev/null 2>&1; then
+  strap::running "Tapping caskroom/versions..."
+  brew tap caskroom/versions
+fi
+strap::ok
+
+strap::running "Checking Homebrew updates:"
+brew update >/dev/null
+brew upgrade
+strap::ok

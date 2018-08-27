@@ -22,6 +22,25 @@ strap::os::category() {
 }
 readonly STRAP_OS="$(strap::os::category)"
 
+strap::os::distro() {
+  local distro=''
+  [[ "$STRAP_OS" == 'mac' ]] && distro='darwin'
+  [[ -z "$distro" ]] && [[ -f '/etc/ubuntu-release' ]] && distro='ubuntu'
+  [[ -z "$distro" ]] && [[ -f '/etc/centos-release' ]] && distro='centos'
+  [[ -z "$distro" ]] && [[ -f '/etc/redhat-release' ]] && distro='redhat'
+  [[ -z "$distro" ]] && distro='linux' # default
+  echo "$distro"
+}
+readonly STRAP_OS_DISTRO="$(strap::os::distro)"
+
+strap::os::is_mac() {
+  if [[ "$STRAP_OS" == 'mac' ]]; then
+    return 0
+  else
+    return 1
+  fi
+}
+
 strap::semver::version() {
 
   local flags=
@@ -77,11 +96,25 @@ strap::semver::compare() {
 
 strap::os::version() {
   local flags="${1:-}"
-  local version
-  case "$STRAP_OS" in
-    mac) version="$(sw_vers -productVersion)" ;;
-    *) echo "unsupported os" >&2 && return 1 ;;
-  esac
+  local version=''
+
+  if command -v sw_vers >/dev/null; then # mac
+    version="$(sw_vers -productVersion)"
+  elif command -v lsb_release >/dev/null; then # linux distro w/ lsb_release
+    version="$(lsb_release -r | sed 's/.*\:[[:blank:]]*//')"
+  fi
+
+  if [[ -z "$version" ]]; then # try centos/redhat
+    local release_file='/etc/centos-release'
+    [[ -f "$release_file" ]] || release_file='/etc/redhat-release' # fall back to redhat-release
+    [[ -f "$release_file" ]] && version="$(cat ${release_file} | sed 's/^[^0-9]*//g' | awk '{print $1}')"
+  fi
+
+  if [[ -z "$version" ]]; then
+    echo "unsupported os" >&2
+    return 1
+  fi
+
   strap::semver::version "$flags" "$version"
 }
 
@@ -107,7 +140,7 @@ strap::os::model::mac() {
 strap::os::model() {
   case "$STRAP_OS" in
     mac) echo "$(strap::os::model::mac)" ;;
-    *) echo "UNKNOWN" ;;
+    *) echo "$(uname -a)" ;;
   esac
 }
 

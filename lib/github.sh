@@ -17,6 +17,8 @@ set -a
 
 strap::github::user::ensure() {
 
+  strap::running "Checking GitHub username"
+
   local github_username="$(git config --global github.user || true)"
 
   if [[ -z "$github_username" ]]; then
@@ -24,6 +26,8 @@ strap::github::user::ensure() {
     strap::readval github_username "Enter your GitHub username" false true
     git config --global github.user "$github_username" || strap::abort "Unable to save GitHub username to git config"
   fi
+
+  strap::ok
 }
 
 strap::github::user::get() {
@@ -31,24 +35,19 @@ strap::github::user::get() {
 }
 
 strap::github::token::delete() {
-  printf "protocol=https\nhost=github.com\n" | git credential-osxkeychain erase >/dev/null # clear any previous value
+  strap::git::credential::delete 'github.com'
 }
 
 strap::github::token::save() {
   local -r username="${1:-}" && [[ -z "$username" ]] && strap::error 'strap::github::token::find: $1 must be a github username' && return 1
   local -r token="${2:-}" && [[ -z "$token" ]] && strap::error 'strap::github::token::find: $2 must be a github api token' && return 1
-  printf "protocol=https\nhost=github.com\n" | git credential-osxkeychain erase # clear any previous value
-  printf "protocol=https\nhost=github.com\nusername=%s\npassword=%s\n" "$username" "$token" | git credential-osxkeychain store # save it
+  strap::git::credential::save 'github.com' "$username" "$token"
 }
 
 strap::github::token::find() {
 
   local -r username="${1:-}" && strap::assert::has_length "$username" '$1 must be a github username'
-  local token=
-
-  if strap::git::credential::osxkeychain::available; then
-    token="$(printf "host=github.com\nprotocol=https\nusername=${username}\n\n" | git credential-osxkeychain get | cut -d "=" -f 2)"
-  fi
+  local token="$(strap::git::credential::find 'github.com' "$username")"
 
   # This is for legacy strap environments where strap stored the token manually in the osxkeychain instead of using
   # the git credential helper.  If found, it will be moved to the git credential helper (as this is the de-facto standard)
@@ -211,7 +210,8 @@ strap::github::api::user() {
 }
 
 strap::github::api::user::name() {
-  local -r user_json="$(strap::github::api::user)"
+  local -r token="${1:-}"
+  local -r user_json="$(strap::github::api::user ${token})"
   echo "$user_json"| jq -r '.name // empty'
 }
 

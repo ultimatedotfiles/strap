@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+
+STRAP_RELEASE_REF="${1:-}" && [ -z "$STRAP_RELEASE_REF" ] && STRAP_RELEASE_REF='master'
+
+STRAP_INSTALL_SCRIPT_URL="https://raw.githubusercontent.com/ultimatedotfiles/strap/${STRAP_RELEASE_REF}/install"
+
+if command -v wget >/dev/null; then
+  wget -qO- "$STRAP_INSTALL_SCRIPT_URL" | bash -s -- "$STRAP_RELEASE_REF"
+elif command -v curl >/dev/null; then
+  curl -fsSL "$STRAP_INSTALL_SCRIPT_URL" | bash -s -- "$STRAP_RELEASE_REF"
+else
+  echo "Neither wget nor curl are available.  Cannot download strap." >&2
+  exit 1
+fi
+
+exepath=".strap/releases/current/bin/strap"
+strapexe="$HOME/$exepath"
+
+if [[ ! -x "$strapexe" ]]; then
+  echo "Strap installation likely failed: Could not find '\$HOME/$exepath'." >&2
+  exit 1
+fi
+
+"$strapexe" run

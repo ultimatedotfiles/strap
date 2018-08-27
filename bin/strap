@@ -96,6 +96,11 @@ exit_if_missing "$STRAP_LIB_DIR" STRAP_LIB_DIR
 exit_if_missing "$STRAP_CMD_DIR" STRAP_CMD_DIR
 unset -f exit_if_missing
 
+# Are we running interactive?
+STRAP_INTERACTIVE='' # assume not interactive by default
+[[ -t "0" || -p /dev/stdin ]] && STRAP_INTERACTIVE="1" # we're interactive
+export STRAP_INTERACTIVE
+
 # treat strap itself as a plugin until other plugins are loaded:
 export STRAP_PLUGIN_HOME="$STRAP_HOME"
 export STRAP_PLUGIN_LIB_DIR="$STRAP_LIB_DIR"
