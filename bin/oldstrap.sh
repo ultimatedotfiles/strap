@@ -333,7 +333,7 @@ logk
 # Check if the Xcode license is agreed to and agree if not.
 xcode_license() {
   if /usr/bin/xcrun clang 2>&1 | grep $Q license; then
-    if [ -n "$INTERACTIVE" ]; then
+    if [ -n "$STRAP_INTERACTIVE" ]; then
       logn "Asking for Xcode license confirmation:"
       sudo xcodebuild -license
       logk

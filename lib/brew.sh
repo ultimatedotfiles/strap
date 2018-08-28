@@ -6,11 +6,57 @@ command -v strap::lib::import >/dev/null || { echo "strap::lib::import is not av
 strap::lib::import lang || . lang.sh
 strap::lib::import logging || . logging.sh
 strap::lib::import path || . path.sh
+strap::lib::import xcodeclt || . xcodeclt.sh
+
+STRAP_HOME="${STRAP_HOME:-}" && strap::assert::has_length "$STRAP_HOME" 'STRAP_HOME is not set.'
+strap::assert::has_length "$STRAP_SHELL_ENV_FILE" 'STRAP_SHELL_ENV_FILE is not set.'
 
 set -a
 
-STRAP_HOMEBREW_PREFIX="$(brew --prefix)"
-! strap::path::contains "$STRAP_HOMEBREW_PREFIX/bin" && export PATH="$STRAP_HOMEBREW_PREFIX/bin:$PATH"
+strap::brew::init() {
+
+  # Ensure Xcode Command Line Tools are installed
+  strap::xcode::clt::ensure
+  strap::xcode::clt::ensure_license
+
+  strap::running "Checking Homebrew"
+  if command -v brew >/dev/null 2>&1; then
+    strap::ok
+    strap::running "Checking Homebrew updates"
+    brew update >/dev/null
+    brew upgrade
+  else
+    strap::action "Installing Homebrew"
+    yes '' | /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)";
+  fi
+  strap::ok
+
+  STRAP_HOMEBREW_PREFIX="$(brew --prefix)"
+  ! strap::path::contains "$STRAP_HOMEBREW_PREFIX/bin" && export PATH="$STRAP_HOMEBREW_PREFIX/bin:$PATH"
+
+  strap::running "Ensuring Homebrew \$PATH entries in ~/.strap/strapenv"
+  #strap::info "Strap shell env file: $STRAP_SHELL_ENV_FILE"
+  if ! grep -q "homebrew:begin" "$STRAP_SHELL_ENV_FILE"; then
+    #strap::action "Adding ~/.strap/strapenv check for homebrew \$PATH entries"
+    local file="$STRAP_HOME/etc/profile.d/homebrewenv.sh"
+    [[ ! -f "$file" ]] && strap::abort "Invalid strap installation. Missing file: $file"
+    echo "" >> "$STRAP_SHELL_ENV_FILE"
+    cat "$file" >> "$STRAP_SHELL_ENV_FILE"
+    #cat "$STRAP_SHELL_ENV_FILE"
+  fi
+  strap::ok
+}
+
+strap::brew::pkg::is_installed() {
+  local formula="${1:-}" && strap::assert::has_length "$formula" '$1 must be the formula id'
+  brew list --versions "$formula" >/dev/null
+  return "$?"
+}
+
+strap::brew::pkg::install() {
+  local formula="${1:-}" && strap::assert::has_length "$formula" '$1 must be the formula id'
+  brew install "$formula"
+}
 
 __strap::brew::ensure_formula() {
   local command="${1:-}" && strap::assert::has_length "$command" '$1 must be the command'
