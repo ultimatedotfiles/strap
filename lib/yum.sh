@@ -18,12 +18,12 @@ strap::yum::init() {
 
 strap::yum::pkg::is_installed() {
   local package_id="${1:-}" && strap::assert::has_length "$package_id" '$1 must be the package id'
-  yum list installed "$package_id" >/dev/null 2>&1
+  sudo yum list installed "$package_id" >/dev/null 2>&1
   return "$?"
 }
 
 strap::yum::pkg::install() {
   local package_id="${1:-}" && strap::assert::has_length "$package_id" '$1 must be the package id'
-  yum -y install "$package_id"
+  sudo yum -y install "$package_id"
   return "$?"
 }

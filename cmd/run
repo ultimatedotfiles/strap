@@ -14,6 +14,7 @@ strap::lib::import io || source ../lib/io.sh
 strap::lib::import logging || source ../lib/logging.sh
 strap::lib::import sudo || source ../lib/sudo.sh
 strap::lib::import fs || source ../lib/fs.sh
+strap::lib::import os || source ../lib/os.sh
 strap::lib::import pkgmgr || source ../lib/pkgmgr.sh
 strap::lib::import pkg || source ../lib/pkg.sh
 
@@ -94,7 +95,7 @@ println() {
 }
 
 [ "$STRAP_USER" = "root" ] && strap::abort "Run 'strap run' as yourself, not root."
-groups | grep $Q admin || strap::abort "Add $STRAP_USER to the admin group."
+if [[ "$STRAP_OS" == 'mac' ]] && ! groups | grep $Q admin; then strap::abort "Add $STRAP_USER to the admin group."; fi
 
 declare -rx STRAP_SHELL=$(basename "$SHELL")
 declare -rx STRAP_SHELL_ENV_FILE="${STRAP_USER_HOME}/strapenv"
