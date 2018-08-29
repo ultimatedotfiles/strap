@@ -25,15 +25,17 @@ matrix:
 
 before_install:
   # Remove the developer environment that travis installs by default - we need to ensure our script installs these things
-  - brew cleanup
-  - URL=https://raw.githubusercontent.com/Homebrew/install/master/uninstall
-  - curl -sLO "${URL}"
-  - chmod +x uninstall
-  - ./uninstall --force
-  - rm -rf /usr/local/Homebrew
-  - sudo rm -rf /usr/local/Caskroom
-  - sudo rm -rf /usr/local/bin/brew
-  - sudo rm -rf /Library/Developer/CommandLineTools
+  - if [[ command -v brew >/dev/null ]]; then
+  -   brew cleanup
+  -   URL=https://raw.githubusercontent.com/Homebrew/install/master/uninstall
+  -   curl -sLO "${URL}"
+  -   chmod +x uninstall
+  -   ./uninstall --force
+  -   rm -rf /usr/local/Homebrew
+  -   sudo rm -rf /usr/local/Caskroom
+  -   sudo rm -rf /usr/local/bin/brew
+  -   sudo rm -rf /Library/Developer/CommandLineTools
+  - fi
   - bash --version
   - export STRAP_SUDO_PROMPT=false # lib/sudo.sh: don't need to prompt for password on Travis
 
