@@ -7,6 +7,7 @@ strap::lib::import logging || . logging.sh
 
 STRAP_HOME="${STRAP_HOME:-}" && [[ -z "$STRAP_HOME" ]] && echo "STRAP_HOME is not set." >&2 && exit 1
 STRAP_USER_HOME="${STRAP_USER_HOME:-}" && [[ -z "$STRAP_USER_HOME" ]] && echo "STRAP_USER_HOME is not set." >&2 && exit 1
+STRAP_SUDO_RESET="${STRAP_SUDO_RESET:-}" && [[ -z "$STRAP_SUDO_RESET" ]] && STRAP_SUDO_RESET=true
 STRAP_SUDO_CLEANED=''
 
 set -a
@@ -45,7 +46,7 @@ strap::sudo::enable() {
   # Ensure correct file permissions in case they're ever changed by accident:
   chmod 700 "$__strap__sudo__edit" "$__strap__sudo__cleanup"
 
-  sudo -k # clear out any cached time to ensure we start fresh
+  if [[ "$STRAP_SUDO_RESET" == true ]]; then sudo -k; fi # clear out any cached time to ensure we start fresh
 
   sudo -p "Enter your sudo password: " "$__strap__sudo__edit" "$__strap__sudo__cleanup"
   sudo -v -p "Enter your sudo password (confirm): " # Required if system-wide timeout is zero. Does nothing otherwise.
