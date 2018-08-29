@@ -28,10 +28,13 @@ strap::brew::init() {
   else
     strap::action "Installing Homebrew"
     (
+      set +o pipefail
+      set +e
       unset -f $(compgen -A function strap)
-      homebrew_output="$(yes '' | /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)")"
-      echo "homebrew install returned $?";
-      echo "homebrew output: $homebrew_output"
+      yes '' | /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+      echo "homebrew install exit code: $?"
+      set -o pipefail
+      set -e
     )
     #set -o posix # homebrew scripts barf when strap::** function names are present
     #yes '' | /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)";

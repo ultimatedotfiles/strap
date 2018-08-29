@@ -50,14 +50,14 @@ strap::sudo::enable() {
     sudo -k # clear out any cached time to ensure we start fresh
     sudo -p "Enter your sudo password: " "$__strap__sudo__edit" "$__strap__sudo__cleanup"
     sudo -v -p "Enter your sudo password (confirm): " # Required if system-wide timeout is zero. Does nothing otherwise.
+
+    # spawn keepalive loop in background.  This will automatically exit after strap exits or
+    # we explicitly kill it with its PID, whichever comes first:
+    while true; do sudo -vn >/dev/null 2>&1; sleep 1; kill -0 "$$" >/dev/null 2>&1 || exit; done &
+    export STRAP_SUDO_WAIT_PID="$!"
   fi
 
   trap 'strap::sudo::cleanup' SIGINT SIGTERM EXIT
-
-  # spawn keepalive loop in background.  This will automatically exit after strap exits or
-  # we explicitly kill it with its PID, whichever comes first:
-  while true; do sudo -vn >/dev/null 2>&1; sleep 1; kill -0 "$$" >/dev/null 2>&1 || exit; done &
-  export STRAP_SUDO_WAIT_PID="$!"
 }
 
 set +a
