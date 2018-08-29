@@ -36,4 +36,4 @@ install: false
 script:
 
 # Run the script:
-- STRAP_DEBUG=1 bin/strap run && unset STRAP_DEBUG; bin/strap run; # run second time for idempotence checks
+- bin/strap run && bin/strap run; # run second time for idempotence checks
