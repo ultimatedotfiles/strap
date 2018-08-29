@@ -35,7 +35,7 @@ install: false
 script:
 
 # Run the script:
-- bin/strap run
+- bash bin/strap run
 
 # Run it again to check for idempotenence:
-- bin/strap run
+- bash bin/strap run
