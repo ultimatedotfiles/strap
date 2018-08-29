@@ -35,14 +35,12 @@ strap::brew::init() {
   ! strap::path::contains "$STRAP_HOMEBREW_PREFIX/bin" && export PATH="$STRAP_HOMEBREW_PREFIX/bin:$PATH"
 
   strap::running "Ensuring Homebrew \$PATH entries in ~/.strap/strapenv"
-  #strap::info "Strap shell env file: $STRAP_SHELL_ENV_FILE"
   if ! grep -q "homebrew:begin" "$STRAP_SHELL_ENV_FILE"; then
     #strap::action "Adding ~/.strap/strapenv check for homebrew \$PATH entries"
     local file="$STRAP_HOME/etc/profile.d/homebrewenv.sh"
     [[ ! -f "$file" ]] && strap::abort "Invalid strap installation. Missing file: $file"
     echo "" >> "$STRAP_SHELL_ENV_FILE"
     cat "$file" >> "$STRAP_SHELL_ENV_FILE"
-    #cat "$STRAP_SHELL_ENV_FILE"
   fi
   strap::ok
 }
@@ -50,7 +48,6 @@ strap::brew::init() {
 strap::brew::pkg::is_installed() {
   local formula="${1:-}" && strap::assert::has_length "$formula" '$1 must be the formula id'
   brew list --versions "$formula" >/dev/null
-  return "$?"
 }
 
 strap::brew::pkg::install() {
@@ -58,43 +55,43 @@ strap::brew::pkg::install() {
   brew install "$formula"
 }
 
-__strap::brew::ensure_formula() {
-  local command="${1:-}" && strap::assert::has_length "$command" '$1 must be the command'
-  local formula="${2:-}" && strap::assert::has_length "$formula" '$2 must be the formula id'
-  local name="${3:-}" && [ -z "$name" ] && name="$formula"
-
-  strap::running "Checking $name"
-  if ! ${command} list ${formula} >/dev/null 2>&1; then
-    strap::action "Installing $name..."
-    ${command} install ${formula}
-  fi
-  strap::ok
-}
-
-strap::brew::ensure() { __strap::brew::ensure_formula "brew" "$@"; }
-
-strap::brew::cask::ensure() {
-  local formula="${1:-}" && strap::assert::has_length "$formula" '$1 must be the formula id'
-  local apppath="${2:-}"
-
-  if [ -n "$apppath" ] && [ -d "$apppath" ]; then
-    # simulate checking message:
-    strap::running "Checking brew cask $formula"
-    if ! brew cask list "$formula" >/dev/null 2>&1; then
-      strap::ok
-      strap::info
-      strap::info "$formula appears to have been manually installed to $apppath"
-      strap::info "If you want strap or homebrew to manage $formula version upgrades"
-      strap::info "automatically (recommended), you should manually uninstall $apppath"
-      strap::info "and re-run strap or manually run 'brew cask install $formula'."
-      strap::info
-    else
-      strap::ok
-    fi
-  else
-    __strap::brew::ensure_formula "brew cask" "$formula"
-  fi
-}
+#__strap::brew::ensure_formula() {
+#  local command="${1:-}" && strap::assert::has_length "$command" '$1 must be the command'
+#  local formula="${2:-}" && strap::assert::has_length "$formula" '$2 must be the formula id'
+#  local name="${3:-}" && [ -z "$name" ] && name="$formula"
+#
+#  strap::running "Checking $name"
+#  if ! ${command} list ${formula} >/dev/null 2>&1; then
+#    strap::action "Installing $name..."
+#    ${command} install ${formula}
+#  fi
+#  strap::ok
+#}
+#
+#strap::brew::ensure() { __strap::brew::ensure_formula "brew" "$@"; }
+#
+#strap::brew::cask::ensure() {
+#  local formula="${1:-}" && strap::assert::has_length "$formula" '$1 must be the formula id'
+#  local apppath="${2:-}"
+#
+#  if [ -n "$apppath" ] && [ -d "$apppath" ]; then
+#    # simulate checking message:
+#    strap::running "Checking brew cask $formula"
+#    if ! brew cask list "$formula" >/dev/null 2>&1; then
+#      strap::ok
+#      strap::info
+#      strap::info "$formula appears to have been manually installed to $apppath"
+#      strap::info "If you want strap or homebrew to manage $formula version upgrades"
+#      strap::info "automatically (recommended), you should manually uninstall $apppath"
+#      strap::info "and re-run strap or manually run 'brew cask install $formula'."
+#      strap::info
+#    else
+#      strap::ok
+#    fi
+#  else
+#    __strap::brew::ensure_formula "brew cask" "$formula"
+#  fi
+#}
 
 strap::brew::ensure_brew_shellrc_entry() {
   local file="${1:-}" && [ ! -f "$file" ] && strap::assert::has_length '' '$1 must be the shell rc file'
