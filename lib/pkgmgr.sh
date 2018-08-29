@@ -18,7 +18,7 @@ strap::pkgmgr::id() {
   elif command -v yum >/dev/null 2>&1; then
     id='yum'
   elif command -v apt-get >/dev/null 2>&1; then
-    id='apt'
+    id='aptget'
   else
     echo "Unable to detect $STRAP_OS package manager" >&2
     return 1
