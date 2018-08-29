@@ -13,7 +13,7 @@ set -a
 strap::pkgmgr::id() {
   local id
 
-  if command -v brew >/dev/null 2>&1; then
+  if [[ "$STRAP_OS" == 'mac' ]] || command -v brew >/dev/null 2>&1; then
     id='brew'
   elif command -v yum >/dev/null 2>&1; then
     id='yum'
