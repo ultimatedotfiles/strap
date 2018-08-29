@@ -27,7 +27,7 @@ strap::brew::init() {
     brew upgrade
   else
     strap::action "Installing Homebrew"
-    (set -o posix; unset -f $(compgen -v strap); yes '' | /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"; set +o posix;)
+    ( unset -f $(compgen -A function strap); yes '' | /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"; echo "homebrew install returned $?. compgen output: $(compgen -A function)"; )
     #set -o posix # homebrew scripts barf when strap::** function names are present
     #yes '' | /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)";
     #set +o posix
