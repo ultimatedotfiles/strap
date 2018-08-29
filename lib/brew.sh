@@ -27,7 +27,9 @@ strap::brew::init() {
     brew upgrade
   else
     strap::action "Installing Homebrew"
+    set -o posix # homebrew scripts barf when strap::** function names are present
     yes '' | /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)";
+    set +o posix
   fi
   strap::ok
 
