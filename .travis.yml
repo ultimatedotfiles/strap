@@ -29,7 +29,7 @@ before_install:
   - sudo rm -rf /usr/local/bin/brew
   - sudo rm -rf /Library/Developer/CommandLineTools
   - bash --version
-  - export STRAP_SUDO_RESET=false # lib/sudo.sh: don't need to prompt for password on Travis
+  - export STRAP_SUDO_PROMPT=false # lib/sudo.sh: don't need to prompt for password on Travis
 
 install: false
 
