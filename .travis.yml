@@ -28,7 +28,7 @@ before_install:
   - sudo rm -rf /usr/local/Caskroom
   - sudo rm -rf /usr/local/bin/brew
   - sudo rm -rf /Library/Developer/CommandLineTools
-  - sudo cat /etc/sudoers
+  - bash --version
 
 install: false
 
