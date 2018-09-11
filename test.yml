@@ -20,10 +20,6 @@
   - name: Download the nvm(node version manager) install script
     shell: curl -o- https://raw.githubusercontent.com/creationix/nvm/v{{ nvm_version }}/install.sh | bash
 
-  - name: Delete previously nvm config
-    shell: npm config delete prefix
-    become_user: root
-
   - name: Register the NVM_DIR
     shell: cd /root && mkdir -p /root/.nvm && export NVM_DIR={{ nvm_dir }}
     become_user: root
