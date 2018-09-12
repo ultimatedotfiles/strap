@@ -40,8 +40,14 @@
     shell: node -v
     register: nodeVersion
 
-  - name: Download and install yarn and grunt
-    shell: curl -o- -L https://yarnpkg.com/install.sh | bash -s -- --version {{ yarn_version }} && yarn install --mutex network && yarn global add grunt-cli@1.2.0 --mutex network
+  - name: Download yarn
+    shell: curl -o- -L https://yarnpkg.com/install.sh | bash -s -- --version {{ yarn_version }}
+
+  - name: Install yarn
+    shell: yarn install --mutex network 
+
+  - name: Install grunt
+    shell: yarn config set strict-ssl false && yarn global add grunt-cli@1.2.0 --mutex network
 
   - name: Fetch yarn version
     shell: yarn --version
