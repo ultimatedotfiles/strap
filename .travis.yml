@@ -46,17 +46,16 @@ before_install:
   - sudo rm -rf /Library/Developer/CommandLineTools
   - rm -rf ~/.ssh/id_rsa # travis puts this here, but we want our script to generate one for strap's purposes
   - bash --version
-  # Next 4 lines from https://github.com/travis-ci/travis-ci/issues/7259#issuecomment-344515266
-  - export DISPLAY=':99.0'
-  - if [ "${TRAVIS_OS_NAME}" = "linux" ]; then sh -e /etc/init.d/xvfb start; fi
-  - if [ "${TRAVIS_OS_NAME}" = "osx" ]; then ( sudo Xvfb :99 -ac -screen 0 1024x768x8; echo ok )& fi
+  # Next 4 lines from https://docs.travis-ci.com/user/gui-and-headless-browsers/#using-xvfb-directly
+  # They are needed to ensure a DBus session can be used for secure-tool on linux:
+  - "export DISPLAY=:99.0"
+  - if [ "${TRAVIS_OS_NAME}" = "linux" ]; then "sh -e /etc/init.d/xvfb start"; fi
   - sleep 3 # give xvfb some time to start
 
 install: false
 
 script:
-  - bin/strap run
-  - bin/strap run # call a 2nd time to test idempotence
+  - bin/strap run && bin/strap run # call a 2nd time to test idempotence
 
 after_script:
   - test/ci/cleanup # remove any test assets that might have been persisted to other systems during the build
