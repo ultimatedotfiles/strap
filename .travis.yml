@@ -1,6 +1,15 @@
----
 sudo: required
 language: bash
+
+env:
+  global:
+    - STRAP_SUDO_PROMPT=false
+    - STRAP_PROFILES=ci
+    - STRAP_GITHUB_USER=lhazlewood
+    # this next secure value was created via:
+    #     travis encrypt STRAP_GITHUB_TOKEN='my_github_personal_access_token'
+    - secure: Yg8jj6JzxFhEJ33DIuDzrxZ5l14QcGJpGw1bsNWfkuuWp3nRAis0J+cXHugaxlwPMtLosfmkhya/vUpMeyPVd8eeNq9qJn2Lq7aFqrPbVoNkyDdX+LFOA8PlXk8odGd+8eGXbQosmp0K1iZSuYyrhh6wWMrY61N8JhgM82IQCNYaGIBB+W38k+P6m/4seXyndmF0gu29AR5a+LhxWv87bk4GWuJNpokrtpJn/C8/XnD4v8zPkphD+niTOcSApZcVaHiAi+MzljY/8jeMHWVz5Igh2DjMapP3RG/hrruCUvIstgkYsITf+2DhgqcPF+HXxihNxCC7f6qf+cGR72eq50qA80XNhov+VMYzqKzjBsTDIGZooTewV4Vr3GqFs4tH9YeYVXf/yiLAWDaBl3awfxmThCO0Lbo3tZAtSBUQFnRsZZMteiTCTrdPTOpG9Ybyc7Z3q98DsFg4tbFxqQ44JQflgYn1nqaJlN73jCWGr3ZDZ7RpBw3JoO+yUXXOru1mi8cRDx9ypLmWLUOC1zsI5+HFkJpGowL8eGuRChhYXaZAZSsLgg/b4935kHveIV1j9VkoZcQIoH6ka5UhkJFoVlSR4d3b2XGKAVkvIDlcf0Vr6dwrR0qWFvJBk/Kvb8tFZUXtZ3pfs9DiglSd6avZzP+sdTdbGqaNpjboew5Ltl4=
+
 matrix:
   include:
   - name: "Ubuntu 14.04 Trusty"
@@ -36,11 +45,11 @@ before_install:
   - sudo rm -rf /usr/local/bin/brew
   - sudo rm -rf /Library/Developer/CommandLineTools
   - bash --version
-  - export STRAP_SUDO_PROMPT=false # lib/sudo.sh: don't need to prompt for password on Travis
 
 install: false
 
 script:
+  - bin/strap run && bin/strap run; # call a 2nd time to test idempotence
 
-# Run the script:
-- bin/strap run && bin/strap run; # run second time for idempotence checks
+after_script:
+  - test/ci/cleanup # remove any test assets that might have been persisted to other systems during the build

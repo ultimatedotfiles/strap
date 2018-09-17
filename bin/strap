@@ -101,6 +101,12 @@ STRAP_INTERACTIVE='' # assume not interactive by default
 [[ -t "0" || -p /dev/stdin ]] && STRAP_INTERACTIVE="1" # we're interactive
 export STRAP_INTERACTIVE
 
+# Profiles dictate how strap executes during a run.
+# Checks for this should be relatively rare - almost all functionality behavior triggers should be machine/host
+# specific and based on the host operating system, OS version and/or package manager.  This mainly
+# exists for CI.
+export STRAP_PROFILES="${STRAP_PROFILES:-}"
+
 # treat strap itself as a plugin until other plugins are loaded:
 export STRAP_PLUGIN_HOME="$STRAP_HOME"
 export STRAP_PLUGIN_LIB_DIR="$STRAP_LIB_DIR"
