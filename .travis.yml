@@ -44,12 +44,14 @@ before_install:
   - sudo rm -rf /usr/local/Caskroom
   - sudo rm -rf /usr/local/bin/brew
   - sudo rm -rf /Library/Developer/CommandLineTools
+  - rm -rf ~/.ssh/id_rsa # travis puts this here, but we want our script to generate one for strap's purposes
   - bash --version
 
 install: false
 
 script:
-  - bin/strap run && bin/strap run; # call a 2nd time to test idempotence
+  - bin/strap run
+  - bin/strap run # call a 2nd time to test idempotence
 
 after_script:
   - test/ci/cleanup # remove any test assets that might have been persisted to other systems during the build

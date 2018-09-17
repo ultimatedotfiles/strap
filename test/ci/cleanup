@@ -34,9 +34,11 @@ strap_ci_github_sshkeys_delete() {
   local -r json="$(strap_ci_github_api_request 'https://api.github.com/user/keys')"
   local -r result="$(echo "$json" | jq -r '.[] | select(.title | contains("This is for CI testing and may be safely deleted")) | .url // empty')"
 
+  if [[ -z "$result" ]]; then return 0; fi
+
   while read -r url; do
     echo "Deleting ssh key $url"
-    response=$(curl --silent --show-error -i -H "Authorization: token ${token}" -X DELETE ${url})
+    response=$(curl --silent --show-error -i -H "Authorization: token $token" -X DELETE "$url")
     echo "$response"
     #status_code="$(echo "$response" | head -1 | awk '{print $2}')"
     #headers="$(echo "$response" | sed "/^\s*$(printf '\r')*$/q" | sed '/^[[:space:]]*$/d' | tail -n +2)"
