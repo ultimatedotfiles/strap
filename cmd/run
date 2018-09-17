@@ -348,7 +348,7 @@ strap::ssh::idrsa::passphrase::ensure
 strap::running "Checking ~/.ssh/id_rsa keypair"
 if [ ! -f "$ssh_key" ]; then
 
-  ssh_agent_pid="$(ps -U ${STRAP_USER} | grep [s]sh-agent | awk '{print $1}' | sort | head -n1)"
+  ssh_agent_pid="$(ps -U ${STRAP_USER} | grep [s]sh-agent | awk '{print $1}' | sort | head -n1 || true)"
   if [ -z "$ssh_agent_pid" ]; then
     eval "$(ssh-agent -s)"
   fi
