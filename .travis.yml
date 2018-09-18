@@ -41,9 +41,9 @@ matrix:
   - name: "Mac OS 10.11 El Capitan"
     os: osx
     osx_image: xcode8
-  - name: "Mac OS 10.10 Yosemite"
-    os: osx
-    osx_image: xcode6.4
+  #- name: "Mac OS 10.10 Yosemite"
+  #  os: osx
+  #  osx_image: xcode6.4
 
 #branches:
 #  only:
