@@ -367,14 +367,12 @@ if [ ! -f "$ssh_key" ]; then
 
   command -v expect >/dev/null || strap::pkgmgr::pkg::ensure 'expect'
 
-  set -x # for travis testing only
   expect << EOF
     spawn ssh-add $ssh_add_option $ssh_key
     expect "Enter passphrase"
     send "$ssh_key_passphrase\r"
     expect eof
 EOF
-  set +x
 
 fi
 strap::ok
