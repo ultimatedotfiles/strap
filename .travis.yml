@@ -1,6 +1,11 @@
 sudo: required
 language: bash
 
+addons:
+  apt:
+    packages:
+      - dbus-x11
+
 env:
   global:
     - STRAP_SUDO_PROMPT=false
