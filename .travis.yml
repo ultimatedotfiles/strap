@@ -52,12 +52,7 @@ matrix:
 
 before_install:
   - |
-    if [[ -z "$TRAVIS_OSX_IMAGE" ]]; then
-      dbus-launch /usr/bin/python -c "import gnomekeyring;gnomekeyring.create_sync('login', '');"
-    fi
-  # Remove the developer environment that travis installs by default - we need to ensure our script installs these things
-  - |
-    if [[ -n "$TRAVIS_OSX_IMAGE" ]]; then
+    if [[ -n "$TRAVIS_OSX_IMAGE" ]]; then # Remove the developer environment that travis installs by default - we need to ensure our script installs these things
       brew cleanup
       URL='https://raw.githubusercontent.com/Homebrew/install/master/uninstall'
       curl -sLO "${URL}"
@@ -67,6 +62,8 @@ before_install:
       sudo rm -rf /usr/local/Caskroom
       sudo rm -rf /usr/local/bin/brew
       sudo rm -rf /Library/Developer/CommandLineTools
+    else
+      dbus-launch /usr/bin/python -c "import gnomekeyring;gnomekeyring.create_sync('login', '');"
     fi
   - rm -rf ~/.ssh/id_rsa # travis puts this here, but we want our script to generate one for strap's purposes
   - bash --version
