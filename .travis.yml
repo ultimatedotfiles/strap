@@ -52,7 +52,7 @@ matrix:
 
 before_install:
   - |
-    if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
+    if [[ -z "$TRAVIS_OSX_IMAGE" ]]; then
       dbus-launch /usr/bin/python -c "import gnomekeyring;gnomekeyring.create_sync('login', '');"
     fi
   # Remove the developer environment that travis installs by default - we need to ensure our script installs these things
