@@ -4,7 +4,9 @@ language: bash
 addons:
   apt:
     packages:
-      - dbus-x11
+      #- xvfb
+      - python-gnomekeyring
+      - gnome-keyring
 
 env:
   global:
@@ -21,13 +23,14 @@ matrix:
     dist: trusty
     before_install:
       #- sudo apt-get install -y google-chrome
-      - sudo apt-get install -y fluxbox # will install an X server which we need for the 'expect' command
-      - sudo apt-get install -y xvfb
+      #- sudo apt-get install -y fluxbox # will install an X server which we need for the 'expect' command
+      #- sudo apt-get install -y xvfb
+      #- sudo apt-get install -y gnome-keyring
       # Next 3 lines from https://docs.travis-ci.com/user/gui-and-headless-browsers/#using-xvfb-directly
       # They are needed to ensure a DBus session can be used for secure-tool on linux:
-      - "export DISPLAY=:99.0"
-      - "/sbin/start-stop-daemon --start --quiet --pidfile /tmp/custom_xvfb_99.pid --make-pidfile --background --exec /usr/bin/Xvfb -- :99 -ac -screen 0 1280x1024x16"
-      - sleep 3 # give xvfb some time to start
+      #- "export DISPLAY=:99.0"
+      #- "/sbin/start-stop-daemon --start --quiet --pidfile /tmp/custom_xvfb_99.pid --make-pidfile --background --exec /usr/bin/Xvfb -- :99 -ac -screen 0 1280x1024x16"
+      #- sleep 3 # give xvfb some time to start
   - name: "Mac OS 10.13 High Sierra"
     os: osx
     osx_image: xcode9.4
@@ -48,16 +51,23 @@ matrix:
 #  - /^\d+\.\d+(\.\d+)?(-\S*)?$/
 
 before_install:
+  - |
+    if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
+      dbus-launch /usr/bin/python -c "import gnomekeyring;gnomekeyring.create_sync('login', '');"
+    fi
   # Remove the developer environment that travis installs by default - we need to ensure our script installs these things
-  - if [[ -n "$TRAVIS_OSX_IMAGE" ]]; then brew cleanup; fi
-  - URL=https://raw.githubusercontent.com/Homebrew/install/master/uninstall
-  - if [[ -n "$TRAVIS_OSX_IMAGE" ]]; then curl -sLO "${URL}"; fi
-  - if [[ -n "$TRAVIS_OSX_IMAGE" ]]; then chmod +x uninstall; fi
-  - if [[ -n "$TRAVIS_OSX_IMAGE" ]]; then ./uninstall --force; fi
-  - rm -rf /usr/local/Homebrew
-  - sudo rm -rf /usr/local/Caskroom
-  - sudo rm -rf /usr/local/bin/brew
-  - sudo rm -rf /Library/Developer/CommandLineTools
+  - |
+    if [[ -n "$TRAVIS_OSX_IMAGE" ]]; then
+      brew cleanup
+      URL='https://raw.githubusercontent.com/Homebrew/install/master/uninstall'
+      curl -sLO "${URL}"
+      chmod +x uninstall
+      ./uninstall --force
+      rm -rf /usr/local/Homebrew
+      sudo rm -rf /usr/local/Caskroom
+      sudo rm -rf /usr/local/bin/brew
+      sudo rm -rf /Library/Developer/CommandLineTools
+    fi
   - rm -rf ~/.ssh/id_rsa # travis puts this here, but we want our script to generate one for strap's purposes
   - bash --version
 
