@@ -4,7 +4,7 @@ set -Eeuo pipefail # https://vaneyckt.io/posts/safer_bash_scripts_with_set_euxo_
 
 STRAP_DEBUG="${STRAP_DEBUG:-}" && [[ -n "$STRAP_DEBUG" ]] && set -x
 readonly SUDOERS_FILE="/etc/sudoers"
-readonly TARGET_USER="$(logname)"
+readonly TARGET_USER="$(logname 2>/dev/null || whoami)"
 
 is_global_authc_timeout_zero() {
   local authc_timeout="$(sudo sudo -V | grep 'Authentication timestamp timeout: ' | awk '{print $4}')"

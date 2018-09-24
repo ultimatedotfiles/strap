@@ -85,7 +85,7 @@ declare -rx STRAP_LIB_DIR="$STRAP_HOME/lib"
 declare -rx STRAP_CMD_DIR="$STRAP_HOME/cmd"
 
 # user-specific constants:
-declare -rx STRAP_USER="$(logname)"
+declare -rx STRAP_USER="$(logname 2>/dev/null || whoami)"
 STRAP_USER_HOME="${STRAP_USER_HOME:-}"
 [[ -z "$STRAP_USER_HOME" ]] && STRAP_USER_HOME="$(strap::fs::path "$HOME/.strap")"
 declare -rx STRAP_USER_HOME
