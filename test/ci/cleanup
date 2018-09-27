@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+
+set -Eeuo pipefail # https://vaneyckt.io/posts/safer_bash_scripts_with_set_euxo_pipefail/
+
+# Script for CI support ONLY - this is not part of Strap's functionality exposed to users.  It is used by the
+# build system (Travis) during CI builds for strap
+
+STRAP_GITHUB_TOKEN="${STRAP_GITHUB_TOKEN:-}" # should be a a travis encrypted variable
+
+strap_ci_github_api_request() {
+  local -r token="$STRAP_GITHUB_TOKEN" && [[ -z "$token" ]] && { echo "STRAP_GITHUB_TOKEN is not set" >&2; return 1; }
+  local -r url="${1:-}" && [[ -z "$url" ]] && '$1 must be a github api URL'
+
+  local -r response="$(curl --silent --show-error -H "Authorization: token $token" --write-out "HTTPSTATUS:%{http_code}" "$url")"
+  local -r body="$(echo "$response" | sed -e 's/HTTPSTATUS\:.*//g')"
+  local -r status_code="$(echo "$response" | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')"
+
+  if [[ "$status_code" == "200" || "$status_code" == "201" ]]; then
+    echo "$body"
+  elif [[ "$status_code" == 4* ]]; then
+    return 1
+  else
+    echo "Unexpected GitHub API response:"
+    echo "    Reqeuest URL: $url"
+    echo "    Response Status Code: $status_code"
+    echo "    Response Body: $body"
+    return 1
+  fi
+}
+
+strap_ci_github_sshkeys_delete() {
+  token="$STRAP_GITHUB_TOKEN" && [[ -z "$token" ]] && { echo "STRAP_GITHUB_TOKEN is not set" >&2; return 1; }
+
+  local -r json="$(strap_ci_github_api_request 'https://api.github.com/user/keys')"
+  local -r result="$(echo "$json" | jq -r '.[] | select(.title | contains("This is for CI testing and may be safely deleted")) | .url // empty')"
+
+  if [[ -z "$result" ]]; then return 0; fi
+
+  while read -r url; do
+    echo "Deleting ssh key $url"
+    response=$(curl --silent --show-error -i -H "Authorization: token $token" -X DELETE "$url")
+    echo "$response"
+    #status_code="$(echo "$response" | head -1 | awk '{print $2}')"
+    #headers="$(echo "$response" | sed "/^\s*$(printf '\r')*$/q" | sed '/^[[:space:]]*$/d' | tail -n +2)"
+    #body="$(echo "$response" | sed "1,/^\s*$(printf '\r')*$/d")"
+  done <<< "$result"
+}
+
+main() {
+  strap_ci_github_sshkeys_delete
+}
+main

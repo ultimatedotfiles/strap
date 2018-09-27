@@ -348,16 +348,19 @@ strap::ssh::idrsa::passphrase::ensure
 strap::running "Checking ~/.ssh/id_rsa keypair"
 if [ ! -f "$ssh_key" ]; then
 
-  ssh_agent_pid="$(ps -U ${STRAP_USER} | grep [s]sh-agent | awk '{print $1}' | sort | head -n1)"
+  ssh_agent_pid="$(ps -U ${STRAP_USER} | grep [s]sh-agent | awk '{print $1}' | sort | head -n1 || true)"
   if [ -z "$ssh_agent_pid" ]; then
     eval "$(ssh-agent -s)"
   fi
 
   strap::action "Creating ~/.ssh/id_rsa keypair"
 
-  strap::ssh::idrsa::passphrase::delete # remove whatever might have existed
-  ssh_key_passphrase="$(strap::ssh::idrsa::passphrase::create)"
-  strap::ssh::idrsa::passphrase:save "$ssh_key_passphrase"
+  ssh_key_passphrase=''
+  if [[ "$STRAP_PROFILES" != *"ci"* ]]; then # anything other than CI environments must have an SSH Key passphrase:
+    strap::ssh::idrsa::passphrase::delete # remove whatever might have existed
+    ssh_key_passphrase="$(strap::ssh::idrsa::passphrase::create)"
+    strap::ssh::idrsa::passphrase:save "$ssh_key_passphrase"
+  fi
 
   # TODO: STRAP_GIT_EMAIL can be a github noreply address - in this case, we want the private/primary email instead
   ssh-keygen -t rsa -b 4096 -C "Strap auto-generated RSA key for $STRAP_GIT_EMAIL" -P "$ssh_key_passphrase" -f "$ssh_key" -q
@@ -365,15 +368,17 @@ if [ ! -f "$ssh_key" ]; then
   ssh_add_option=''
   if strap::os::is_mac; then ssh_add_option='-K'; fi
 
-  command -v expect >/dev/null || strap::pkgmgr::pkg::ensure 'expect'
-
-  expect << EOF
-    spawn ssh-add $ssh_add_option $ssh_key
-    expect "Enter passphrase"
-    send "$ssh_key_passphrase\r"
-    expect eof
+  if [[ "$STRAP_PROFILES" == *"ci"* ]]; then # CI environment doesn't require passphrase:
+    ssh-add $ssh_add_option $ssh_key
+  else # all other environments need a passphrase for security:
+    command -v expect >/dev/null || strap::pkgmgr::pkg::ensure 'expect'
+    expect << EOF
+      spawn ssh-add $ssh_add_option $ssh_key
+      expect "Enter passphrase"
+      send "$ssh_key_passphrase\r"
+      expect eof
 EOF
-
+  fi
 fi
 strap::ok
 

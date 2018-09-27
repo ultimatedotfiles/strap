@@ -9,9 +9,14 @@ strap::lib::import io || . io.sh
 strap::lib::import os || . os.sh
 strap::lib::import git || . git.sh
 
+STRAP_PROFILES="${STRAP_PROFILES:-}"
+
 __STRAP_GITHUB_USER_JSON="${__STRAP_GITHUB_USER_JSON:-}"
 __STRAP_GITHUB_USER_EMAILS_JSON="${__STRAP_GITHUB_USER_EMAILS_JSON:-}"
 __STRAP_GITHUB_USER_KEYS_JSON="${__STRAP_GITHUB_USER_KEYS_JSON:-}"
+
+__STRAP_GITHUB_USER="${STRAP_GITHUB_USER:-}" # for CI purposes to prevent prompting for user input
+__STRAP_GITHUB_TOKEN="${STRAP_GITHUB_TOKEN:-}" # for CI purposes to prevent prompting for user input
 
 set -a
 
@@ -20,10 +25,16 @@ strap::github::user::ensure() {
   strap::running "Checking GitHub username"
 
   local github_username="$(git config --global github.user || true)"
+  local store=false && [[ -z "$github_username" ]] && store=true # ensure we store any discovered value before returning
 
-  if [[ -z "$github_username" ]]; then
+  [[ -z "$github_username" ]] && github_username="$__STRAP_GITHUB_USER"; # fall back to env var
+
+  if [[ -z "$github_username" ]]; then # fall back to user prompt
     echo
     strap::readval github_username "Enter your GitHub username" false true
+  fi
+
+  if [[ -n "$github_username" ]] && [[ "$store" == true ]]; then
     git config --global github.user "$github_username" || strap::abort "Unable to save GitHub username to git config"
   fi
 
@@ -48,6 +59,7 @@ strap::github::token::find() {
 
   local -r username="${1:-}" && strap::assert::has_length "$username" '$1 must be a github username'
   local token="$(strap::git::credential::find 'github.com' "$username")"
+  local store=false && [[ -z "$token" ]] && store=true # ensure we store any discovered value before returning
 
   # This is for legacy strap environments where strap stored the token manually in the osxkeychain instead of using
   # the git credential helper.  If found, it will be moved to the git credential helper (as this is the de-facto standard)
@@ -60,17 +72,19 @@ strap::github::token::find() {
 
       token="$(security find-internet-password -a "$username" -s api.github.com -l "$label" -w)"
 
-      if [[ -n "$token" ]]; then # found in the legacy location
-
-         # save to the de-facto location:
-         strap::github::token::save "$username" "$token"
-
-         # remove from the legacy location:
+      if [[ -n "$token" ]]; then # found in the legacy location - remove it:
          security delete-internet-password -a "$username" -s api.github.com -l "$label" 2>&1 >/dev/null
       fi
 
     fi
 
+  fi
+
+  [[ -z "$token" ]] && token="$__STRAP_GITHUB_TOKEN" # fall back to env var - useful in CI to prevent prompting for user input
+
+  if [[ -n "$token" ]] && [[ "$store" == true ]]; then
+    # save to the de-facto location:
+    strap::github::token::save "$username" "$token"
   fi
 
   echo "$token"
@@ -264,14 +278,22 @@ strap::github::api::user::keys() {
 strap::github::api::user::keys::add() {
   local -r token="${1:-}" && strap::assert::has_length "$token" '$1 must be a github api token'
   local -r key="${2:-}" && strap::assert::has_length "$key" '$2 must the contents of an ssh public key file'
+
   now="$(date -u +%FT%TZ)"
-  request_body="{ \"title\": \"Strap-generated RSA public key on $now\", \"key\": \"$key\" }"
+  title="Strap-generated RSA public key on $now."
+  [[ "$STRAP_PROFILES" == *"ci"* ]] && title="${title} This is for CI testing and may be safely deleted."
+  request_body="{ \"title\": \"$title\", \"key\": \"$key\" }"
   response="$(curl --silent --show-error -i -H "Authorization: token $token" -H 'Content-Type: application/json' -X POST -d "$request_body" https://api.github.com/user/keys)"
   status_code="$(echo "$response" | head -1 | awk '{print $2}')"
   #headers="$(echo "$response" | sed "/^\s*$(printf '\r')*$/q" | sed '/^[[:space:]]*$/d' | tail -n +2)"
   #body="$(echo "$response" | sed "1,/^\s*$(printf '\r')*$/d")"
+
+  # remove any cached keys result since we just added one.  This ensures the next time keys are requested, the
+  # complete set will be retrieved:
+  unset __STRAP_GITHUB_USER_KEYS_JSON
+
   if [[ "$status_code" != "201" ]]; then
-    strap::abort 'Unable to upload Strap-generated RSA private key to GitHub'
+    strap::abort 'Unable to upload Strap-generated RSA public key to GitHub'
   fi
 }
 
@@ -293,13 +315,8 @@ strap::github::api::user::keys::ensure() {
   strap::running "Checking ssh public key registered with GitHub"
 
   if ! strap::github::api::user::keys::contains "$token" "$key"; then
-
     strap::action "Registering ssh public key with GitHub"
-
     strap::github::api::user::keys::add "$token" "$key"
-    # remove any cached key result since we just added one.  This ensures the next time keys are requested, the
-    # complete set will be retrieved:
-    unset __STRAP_GITHUB_USER_KEYS_JSON
   fi
 
   strap::ok

@@ -1,10 +1,36 @@
----
 sudo: required
 language: bash
+
+addons:
+  apt:
+    packages:
+      #- xvfb
+      - gnome-keyring
+      - python-gnomekeyring
+
+env:
+  global:
+    - STRAP_SUDO_PROMPT=false
+    - STRAP_PROFILES=ci
+    - STRAP_GITHUB_USER=lhazlewood
+    # this next secure value was created via:
+    #     travis encrypt STRAP_GITHUB_TOKEN='my_github_personal_access_token'
+    - secure: Yg8jj6JzxFhEJ33DIuDzrxZ5l14QcGJpGw1bsNWfkuuWp3nRAis0J+cXHugaxlwPMtLosfmkhya/vUpMeyPVd8eeNq9qJn2Lq7aFqrPbVoNkyDdX+LFOA8PlXk8odGd+8eGXbQosmp0K1iZSuYyrhh6wWMrY61N8JhgM82IQCNYaGIBB+W38k+P6m/4seXyndmF0gu29AR5a+LhxWv87bk4GWuJNpokrtpJn/C8/XnD4v8zPkphD+niTOcSApZcVaHiAi+MzljY/8jeMHWVz5Igh2DjMapP3RG/hrruCUvIstgkYsITf+2DhgqcPF+HXxihNxCC7f6qf+cGR72eq50qA80XNhov+VMYzqKzjBsTDIGZooTewV4Vr3GqFs4tH9YeYVXf/yiLAWDaBl3awfxmThCO0Lbo3tZAtSBUQFnRsZZMteiTCTrdPTOpG9Ybyc7Z3q98DsFg4tbFxqQ44JQflgYn1nqaJlN73jCWGr3ZDZ7RpBw3JoO+yUXXOru1mi8cRDx9ypLmWLUOC1zsI5+HFkJpGowL8eGuRChhYXaZAZSsLgg/b4935kHveIV1j9VkoZcQIoH6ka5UhkJFoVlSR4d3b2XGKAVkvIDlcf0Vr6dwrR0qWFvJBk/Kvb8tFZUXtZ3pfs9DiglSd6avZzP+sdTdbGqaNpjboew5Ltl4=
+
 matrix:
   include:
   - name: "Ubuntu 14.04 Trusty"
     dist: trusty
+    before_install:
+      #- sudo apt-get install -y google-chrome
+      #- sudo apt-get install -y fluxbox # will install an X server which we need for the 'expect' command
+      #- sudo apt-get install -y xvfb
+      #- sudo apt-get install -y gnome-keyring
+      # Next 3 lines from https://docs.travis-ci.com/user/gui-and-headless-browsers/#using-xvfb-directly
+      # They are needed to ensure a DBus session can be used for secure-tool on linux:
+      #- "export DISPLAY=:99.0"
+      #- "/sbin/start-stop-daemon --start --quiet --pidfile /tmp/custom_xvfb_99.pid --make-pidfile --background --exec /usr/bin/Xvfb -- :99 -ac -screen 0 1280x1024x16"
+      #- sleep 3 # give xvfb some time to start
   - name: "Mac OS 10.13 High Sierra"
     os: osx
     osx_image: xcode9.4
@@ -15,9 +41,9 @@ matrix:
   - name: "Mac OS 10.11 El Capitan"
     os: osx
     osx_image: xcode8
-  - name: "Mac OS 10.10 Yosemite"
-    os: osx
-    osx_image: xcode6.4
+  #- name: "Mac OS 10.10 Yosemite"
+  #  os: osx
+  #  osx_image: xcode6.4
 
 #branches:
 #  only:
@@ -25,22 +51,32 @@ matrix:
 #  - /^\d+\.\d+(\.\d+)?(-\S*)?$/
 
 before_install:
-  # Remove the developer environment that travis installs by default - we need to ensure our script installs these things
-  - if [[ -n "$TRAVIS_OSX_IMAGE" ]]; then brew cleanup; fi
-  - URL=https://raw.githubusercontent.com/Homebrew/install/master/uninstall
-  - if [[ -n "$TRAVIS_OSX_IMAGE" ]]; then curl -sLO "${URL}"; fi
-  - if [[ -n "$TRAVIS_OSX_IMAGE" ]]; then chmod +x uninstall; fi
-  - if [[ -n "$TRAVIS_OSX_IMAGE" ]]; then ./uninstall --force; fi
-  - rm -rf /usr/local/Homebrew
-  - sudo rm -rf /usr/local/Caskroom
-  - sudo rm -rf /usr/local/bin/brew
-  - sudo rm -rf /Library/Developer/CommandLineTools
+  - |
+    if [[ -n "$TRAVIS_OSX_IMAGE" ]]; then # Remove the developer environment that travis installs by default - we need to ensure our script installs these things
+      brew cleanup
+      URL='https://raw.githubusercontent.com/Homebrew/install/master/uninstall'
+      curl -sLO "${URL}"
+      chmod +x uninstall
+      ./uninstall --force
+      rm -rf /usr/local/Homebrew
+      sudo rm -rf /usr/local/Caskroom
+      sudo rm -rf /usr/local/bin/brew
+      sudo rm -rf /Library/Developer/CommandLineTools
+    fi
+  - rm -rf ~/.ssh/id_rsa # travis puts this here, but we want our script to generate one for strap's purposes
   - bash --version
-  - export STRAP_SUDO_PROMPT=false # lib/sudo.sh: don't need to prompt for password on Travis
 
 install: false
 
-script:
+before_script:
+  - |
+    if command -v dbus-launch >/dev/null; then
+      if [[ -z "$DBUS_SESSION_BUS_ADDRESS" ]]; then eval `dbus-launch --sh-syntax`; fi
+      dbus-launch /usr/bin/python -c "import gnomekeyring;gnomekeyring.create_sync('login', '');"
+    fi
 
-# Run the script:
-- bin/strap run && bin/strap run; # run second time for idempotence checks
+script:
+  - bin/strap run && bin/strap run # call a 2nd time to test idempotence
+
+after_script:
+  - test/ci/cleanup # remove any test assets that might have been persisted to other systems during the build
