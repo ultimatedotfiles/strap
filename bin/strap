@@ -96,9 +96,13 @@ exit_if_missing "$STRAP_LIB_DIR" STRAP_LIB_DIR
 exit_if_missing "$STRAP_CMD_DIR" STRAP_CMD_DIR
 unset -f exit_if_missing
 
-# Are we running interactive?
-STRAP_INTERACTIVE='' # assume not interactive by default
-[[ -t "0" || -p /dev/stdin ]] && STRAP_INTERACTIVE="1" # we're interactive
+STRAP_INTERACTIVE="${STRAP_INTERACTIVE:-}"
+# Are we running interactive? (check var value, pipe or stdin)
+if [[ "$STRAP_INTERACTIVE" == "true" || -t "0" || -p "/dev/stdin" ]]; then
+  STRAP_INTERACTIVE=true
+else
+  STRAP_INTERACTIVE=false
+fi
 export STRAP_INTERACTIVE
 
 # Profiles dictate how strap executes during a run.
