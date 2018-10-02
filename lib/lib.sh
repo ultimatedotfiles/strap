@@ -35,7 +35,7 @@ strap::lib::import() {
   [[ -n "$plugin" ]] && libname="$plugin.$name"
 
   # if already loaded, don't load again:
-  [[ "$STRAP_LIB_LOADED_LIBS" = *"$libname"* ]] && return 0
+  [[ " $STRAP_LIB_LOADED_LIBS " = *" $libname "* ]] && return 0
 
 #  if [[ -n "$plugin" ]]; then
 #    dir="$STRAP_PLUGINS_DIR/$plugin"
