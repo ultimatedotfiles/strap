@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
-STRAP_RELEASE_REF="${1:-}" && [ -z "$STRAP_RELEASE_REF" ] && STRAP_RELEASE_REF='master'
+STRAP_RELEASE_REF="${STRAP_RELEASE_REF:-}"
+[ -z "$STRAP_RELEASE_REF" ] && STRAP_RELEASE_REF='master'
 
 user_strap_dir="$HOME/.strap"
 mkdir -p "$user_strap_dir"
