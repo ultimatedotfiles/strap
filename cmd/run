@@ -370,19 +370,14 @@ ssh_key="$dir/id_rsa"
 ssh_pub_key="${ssh_key}.pub"
 
 # CI doesn't require a passphrase, but all other envs should
+ssh_key_passphrase=''
 [[ "$STRAP_PROFILES" != *"ci"* ]] && strap::ssh::idrsa::passphrase::ensure
 
 strap::running "Checking ~/.ssh/id_rsa keypair"
 if [ ! -f "$ssh_key" ]; then
 
-  ssh_agent_pid="$(ps -U ${STRAP_USER} | grep [s]sh-agent | awk '{print $1}' | sort | head -n1 || true)"
-  if [ -z "$ssh_agent_pid" ]; then
-    eval "$(ssh-agent -s)"
-  fi
-
   strap::action "Creating ~/.ssh/id_rsa keypair"
 
-  ssh_key_passphrase=''
   if [[ "$STRAP_PROFILES" != *"ci"* ]]; then # anything other than CI environments must have an SSH Key passphrase:
     strap::ssh::idrsa::passphrase::delete # remove whatever might have existed
     ssh_key_passphrase="$(strap::ssh::idrsa::passphrase::create)"
@@ -393,10 +388,26 @@ if [ ! -f "$ssh_key" ]; then
   ssh_key_comment="Strap auto-generated RSA key"
   [[ -n "$__strap_git_email" ]] && ssh_key_comment="$ssh_key_comment for $__strap_git_email"
   ssh-keygen -t rsa -b 4096 -C "$ssh_key_comment" -P "$ssh_key_passphrase" -f "$ssh_key" -q
+fi
+strap::ok
 
+strap::running "Ensuring ~/.ssh/id_rsa keypair file permissions"
+strap::fs::file::ensure "$ssh_key" 400 "~/.ssh/id_rsa"
+[[ -f "$ssh_pub_key" ]] && strap::fs::file::ensure "$ssh_pub_key" 400 "~/.ssh/id_rsa.pub"
+strap::ok
+
+strap::running "Checking ssh-agent"
+ssh_agent_pid="$(ps -U ${STRAP_USER} | grep [s]sh-agent | awk '{print $1}' | sort | head -n1 || true)"
+if [ -z "$ssh_agent_pid" ]; then
+  strap::action "Starting ssh-agent"
+  eval "$(ssh-agent -s)"
+fi
+strap::ok
+
+strap::running "Checking ssh-agent has ~/.ssh/id_rsa"
+if ! ssh-add -l | grep -q "$(ssh-keygen -lf "$ssh_key"  | awk '{print $2}')"; then # key fingerprint not added yet
   ssh_add_option=''
   if strap::os::is_mac; then ssh_add_option='-K'; fi
-
   if [[ "$STRAP_PROFILES" == *"ci"* ]]; then # CI environment doesn't require passphrase:
     ssh-add $ssh_add_option $ssh_key
   else # all other environments need a passphrase for security:
@@ -410,9 +421,6 @@ EOF
   fi
 fi
 strap::ok
-
-strap::fs::file::ensure "$ssh_key" 400 "~/.ssh/id_rsa"
-[[ -f "$ssh_pub_key" ]] && strap::fs::file::ensure "$ssh_pub_key" 400 "~/.ssh/id_rsa.pub"
 
 #############################################################
 # GitHub SSH:
