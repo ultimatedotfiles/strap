@@ -396,13 +396,19 @@ strap::fs::file::ensure "$ssh_key" 400 "~/.ssh/id_rsa"
 [[ -f "$ssh_pub_key" ]] && strap::fs::file::ensure "$ssh_pub_key" 400 "~/.ssh/id_rsa.pub"
 
 strap::running "Checking ssh-agent"
-ssh_agent_pid="$(ps -U ${STRAP_USER} | grep [s]sh-agent | awk '{print $1}' | sort | head -n1 || true)"
-if [ -z "$ssh_agent_pid" ]; then
-  strap::action "Starting ssh-agent"
-  eval "$(ssh-agent -s)"
-  export SSH_AUTH_SOCK
-  export SSH_AGENT_PID
+set +e # disable auto-fail since we need to explicitly allow failure to check for exact failure return value
+ssh_agent_env_file="$HOME/.ssh/agent.env"
+ssh-add -l &>/dev/null
+if [[ "$?" == "2" ]]; then # need to start an agent
+  if [[ -r "$ssh_agent_env_file" ]]; then eval "$(<${ssh_agent_env_file})" >/dev/null; fi
+  ssh-add -l &>/dev/null
+  if [[ "$?" == "2" ]]; then
+    strap::action "Starting ssh-agent"
+    (umask 066; ssh-agent -s > "${ssh_agent_env_file}"; chmod 400 "${ssh_agent_env_file}")
+    eval "$(<${ssh_agent_env_file})" >/dev/null
+  fi
 fi
+set -e # re-enable auto-fail.  See top of this file for why.
 strap::ok
 
 strap::running "Checking ssh-agent has ~/.ssh/id_rsa"
@@ -410,7 +416,7 @@ if ! ssh-add -l | grep -q "$(ssh-keygen -lf "$ssh_key"  | awk '{print $2}')"; th
   ssh_add_option=''
   if strap::os::is_mac; then ssh_add_option='-K'; fi
   if [[ -z "$ssh_key_passphrase" ]]; then
-    ssh-add $ssh_add_option $ssh_key >/dev/null 2>&1 || strap::error "Could not add "$ssh_key" to ssh-agent"
+    ssh-add $ssh_add_option $ssh_key >/dev/null 2>&1 || strap::abort "Could not add $ssh_key to ssh-agent"
   else # Apply the passphrase:
     command -v expect >/dev/null || strap::pkgmgr::pkg::ensure 'expect'
     expect << EOF
