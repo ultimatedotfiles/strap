@@ -458,7 +458,12 @@ if [[ "${#STRAP_RUN_HOOK_PACKAGES[@]}" -gt 0 ]]; then
 
   strap::bot "Run Hook Packages"
 
-  strap::pkgmgr::pkg::ensure yq
+  # We use yq or python yaml (whichever is available) to convert yaml to json and then use jq to read package metadata
+  if strap::os::is_mac; then
+    strap::pkgmgr::pkg::ensure yq
+  else
+    strap::pkgmgr::pkg::ensure pyyaml
+  fi
 
   # ensure packages exist, or download and are valid:
   for package_id in "${STRAP_RUN_HOOK_PACKAGES[@]}"; do
