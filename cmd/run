@@ -471,9 +471,10 @@ if [[ "${#STRAP_RUN_HOOK_PACKAGES[@]}" -gt 0 ]]; then
     strap::pkg::yaml::hook::path "$package_id" run >/dev/null # validates the package automatically
   done
 
+  bash_cmd="$(which bash)"
   for package_id in "${STRAP_RUN_HOOK_PACKAGES[@]}"; do
     file="$(strap::pkg::yaml::hook::path "$package_id" run)"
-    if ! bash "$file"; then
+    if ! ${bash_cmd} "$file"; then
       strap::abort "Unable to execute package $package_id hook $file"
     fi
   done
