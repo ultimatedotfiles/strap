@@ -195,20 +195,30 @@ strap::pkg::ensure() {
     # otherwise, the directory is empty - let's populate it if we can:
 
     # https urls are recommended for GitHub per https://help.github.com/articles/which-remote-url-should-i-use/
-    local -r url="$(strap::pkg::id::github::url::https "$id")"
+    local url="$(strap::pkg::id::github::url::https "$id")"
 
     # let's try to clone to the directory:
-    cloned=true
     strap::action "Cloning $url"
-    if ! git clone "$url" "$dir" >/dev/null 2>&1; then # git clone failed
-      parent="$(dirname "$dir")"
-      rm -rf "$dir"
-      strap::pkg::dir::prune "$parent"
-      strap::abort "Unable to download Strap package $id via \`git clone $url\` to directory $dir. If you are sure \
-the package id and URL are correct, you may not have permissions to access the repository.  If so, please \
-contact the repository administrator and ask for read permissions."
-    fi
+    if ! git clone "$url" "$dir" >/dev/null 2>&1; then # https clone failed, try ssh url (permissions might be different):
 
+      local -r https_url="$url" #save for error message just in case
+
+      url="$(strap::pkg::id::github::url::ssh "$id")"
+
+      if ! git clone "$url" "$dir" >/dev/null 2>&1; then # git clone failed, exit:
+
+        # cleanup first:
+        parent="$(dirname "$dir")"
+        rm -rf "$dir"
+        strap::pkg::dir::prune "$parent"
+
+        # exit:
+        strap::abort "Unable to download Strap package $id via either \`git clone $https_url\` or \`git clone $url\` \
+to directory $dir. If you are sure the package id and URLs are correct, you may not have permissions to access the \
+repository. If so, please contact the repository administrator and ask for read permissions."
+      fi
+    fi
+    cloned=true
   fi
 
   # If rev is 'HEAD', it really means 'origin/HEAD' for Strap's purposes, so set that accordingly before checkout:
