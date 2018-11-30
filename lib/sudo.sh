@@ -5,6 +5,7 @@ set -Eeuo pipefail # https://vaneyckt.io/posts/safer_bash_scripts_with_set_euxo_
 command -v strap::lib::import >/dev/null || { echo "strap::lib::import is not available" >&2; exit 1; }
 strap::lib::import logging || . logging.sh
 
+STRAP_DEBUG="${STRAP_DEBUG:-}"
 STRAP_HOME="${STRAP_HOME:-}" && [[ -z "$STRAP_HOME" ]] && echo "STRAP_HOME is not set." >&2 && exit 1
 STRAP_USER_HOME="${STRAP_USER_HOME:-}" && [[ -z "$STRAP_USER_HOME" ]] && echo "STRAP_USER_HOME is not set." >&2 && exit 1
 STRAP_SUDO_PROMPT="${STRAP_SUDO_PROMPT:-}" && [[ -z "$STRAP_SUDO_PROMPT" ]] && STRAP_SUDO_PROMPT=true # default
@@ -58,7 +59,13 @@ strap::sudo::enable() {
 
     # spawn keepalive loop in background.  This will automatically exit after strap exits or
     # we explicitly kill it with its PID, whichever comes first:
+
+    # disable debug output - it collides with the foreground debug output
+    [ -n "$STRAP_DEBUG" ] && set +x
     while true; do sudo -vn >/dev/null 2>&1; sleep 1; kill -0 "$$" >/dev/null 2>&1 || exit; done &
+    # re-enable debug output if necessary:
+    [ -n "$STRAP_DEBUG" ] && set -x
+
     export STRAP_SUDO_WAIT_PID="$!"
   fi
 }
