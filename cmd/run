@@ -419,13 +419,7 @@ if ! ssh-add -l | grep -q "$(ssh-keygen -lf "$ssh_key"  | awk '{print $2}')"; th
   if [[ -z "$ssh_key_passphrase" ]]; then
     ssh-add $ssh_add_option $ssh_key >/dev/null 2>&1 || strap::abort "Could not add $ssh_key to ssh-agent"
   else # Apply the passphrase:
-    command -v expect >/dev/null || strap::pkgmgr::pkg::ensure 'expect'
-    expect << EOF
-      spawn ssh-add $ssh_add_option $ssh_key
-      expect "Enter passphrase"
-      send "$ssh_key_passphrase\r"
-      expect eof
-EOF
+    DISPLAY=:0 SSH_ASKPASS="$STRAP_HOME/etc/ssh_ask_pass.sh" ssh-add "$ssh_add_option" "$ssh_key" <<< "$ssh_key_passphrase"
   fi
 fi
 strap::ok
@@ -488,3 +482,5 @@ chmod -R go-rwx "$STRAP_USER_HOME"
 
 STRAP_SUCCESS="1"
 printf "\n${FONT_BOLD}${FONT_GREEN}SUCCESS: Your system is now Strap'd!${FONT_CLEAR}\n\n"
+
+exit 0
