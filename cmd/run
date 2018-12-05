@@ -98,7 +98,6 @@ if [[ "$STRAP_OS" == 'mac' ]] && ! groups | grep $Q admin; then strap::abort "Ad
 
 declare -rx STRAP_SHELL=$(basename "$SHELL")
 declare -rx STRAP_SHELL_ENV_FILE="${STRAP_USER_HOME}/strapenv"
-declare -rx STRAP_SHELL_PROFILE_FILE="${STRAP_USER_HOME}/strapprofile"
 declare -rx STRAP_SHELL_RC_FILE="${STRAP_USER_HOME}/straprc"
 
 # Initialize sudo access:
@@ -141,7 +140,6 @@ ensure_strap_dotfile() {
 }
 
 ensure_strap_dotfile 'strapenv' '.bash_profile' '.zshenv'
-ensure_strap_dotfile 'strapprofile' '.bash_profile' '.zprofile'
 ensure_strap_dotfile 'straprc' '.bashrc' '.zshrc'
 
 strap::running "Checking ~/.bash_profile references ~/.bashrc per bash user guide recommendations"
