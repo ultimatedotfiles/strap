@@ -367,12 +367,7 @@ chmod 600 "$file"
 ssh_key="$dir/id_rsa"
 ssh_pub_key="${ssh_key}.pub"
 
-# CI doesn't require a passphrase, but all other envs should
 ssh_key_passphrase=''
-if [[ "$STRAP_PROFILES" != *"ci"* ]]; then
-  strap::ssh::idrsa::passphrase::ensure
-  ssh_key_passphrase="$(strap::ssh::idrsa::passphrase::get)"
-fi
 
 strap::running "Checking ~/.ssh/id_rsa keypair"
 if [ ! -f "$ssh_key" ]; then
