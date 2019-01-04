@@ -177,17 +177,21 @@ strap::pkg::ensure() {
 
   if [[ -n "$(ls -A ${dir})" ]]; then # dir already has contents
 
-    if [[ "$rev" = "HEAD" ]]; then
-      # HEAD means origin/HEAD, so we need to git fetch the origin, and abort if that fails:
-      output="$(cd "$dir"; git fetch 2>&1)"
-      if [[ "$?" -ne 0 ]]; then # git fetch failed
-        strap::abort "Unable to update Strap package $id via \`git fetch\` in directory $dir: \n\n${output}\n\n"
+    if ! (cd "${dir}"; git rev-parse --is-inside-work-tree >/dev/null 2>&1); then # dir is not a valid git work tree
+      strap::abort "Strap package $id directory $dir is not a valid git clone. Delete this directory and run strap again."
+    fi
+
+    if ! (cd "${dir}"; git rev-parse -q --verify "${rev}^{tag}" >/dev/null 2>&1); then # rev is not a tag, we need to git pull
+
+      output="$(cd "$dir"; git pull 2>&1)"
+      if [[ "$?" -ne 0 ]]; then # git pull failed
+        strap::abort "Unable to update Strap package $id via \`git pull\` in directory $dir: \n\n${output}\n\n"
       fi
-      # otherwise git fetch succeeded and the directory's .git references are up to date
+      # otherwise git pull succeeded and the directory's .git references are up to date
 
     else
       strap::ok
-      return 0 # $dir has contents and the $rev is not HEAD, so we already have the contents we need, just return
+      return 0 # $rev is an immutable tag, so we already have the contents we need, just return
     fi
 
   else
