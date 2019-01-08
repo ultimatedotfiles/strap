@@ -1,5 +1,5 @@
 # homebrew:begin
-STRAP_HOMEBREW_PREFIX=''
+export STRAP_HOMEBREW_PREFIX='/usr/local'
 command -v brew >/dev/null 2>&1 && export STRAP_HOMEBREW_PREFIX="$(brew --prefix)"
 if [ -n "$STRAP_HOMEBREW_PREFIX" ]; then
   # Add homebrew's sbin directory to the $PATH if it's not already there:
