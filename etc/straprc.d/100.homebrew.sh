@@ -1,4 +1,4 @@
-# homebrew:begin
+#@IgnoreInspection BashAddShebang
 export STRAP_HOMEBREW_PREFIX='/usr/local'
 command -v brew >/dev/null 2>&1 && export STRAP_HOMEBREW_PREFIX="$(brew --prefix)"
 if [ -n "$STRAP_HOMEBREW_PREFIX" ]; then
@@ -11,4 +11,3 @@ if [ -n "$STRAP_HOMEBREW_PREFIX" ]; then
     export PATH="$STRAP_HOMEBREW_PREFIX/bin:$PATH"
   fi
 fi
-# homebrew:end
