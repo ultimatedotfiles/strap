@@ -21,10 +21,16 @@ Here's a little `strap run` recording to whet your appetite for the things Strap
 [![asciicast](https://asciinema.org/a/188040.png)](https://asciinema.org/a/188040)
 
 
-## Run It
+## Installation
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/ultimatedotfiles/strap/master/run | bash
+curl -fsSL https://raw.githubusercontent.com/ultimatedotfiles/strap/master/install | bash
+```
+
+Then set the following in ~/.bash_profile, ~/.bashrc or ~/.zshrc (or whatever you prefer):
+
+```bash
+export PATH="$HOME/.strap/releases/current/bin:$PATH"
 ```
 
 ## Overview
