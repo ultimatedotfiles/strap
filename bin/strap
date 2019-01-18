@@ -150,8 +150,6 @@ case "$command" in
     fi
 
     shift 1
-    "$command_script" "$@" && exit 0
+    "$command_script" "$@"
     ;;
 esac
-
-exit 0

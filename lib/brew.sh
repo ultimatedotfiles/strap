@@ -9,7 +9,7 @@ strap::lib::import path || . path.sh
 strap::lib::import xcodeclt || . xcodeclt.sh
 
 STRAP_HOME="${STRAP_HOME:-}" && strap::assert::has_length "$STRAP_HOME" 'STRAP_HOME is not set.'
-STRAP_USER_HOME="${STRAP_USER_HOME:-}" && strap::assert::has_length "$STRAP_USER_HOME" 'STRAP_USER_HOME is not set.'
+strap::assert::has_length "$STRAP_SHELL_ENV_FILE" 'STRAP_SHELL_ENV_FILE is not set.'
 
 set -a
 
@@ -43,13 +43,14 @@ strap::brew::init() {
   STRAP_HOMEBREW_PREFIX="$(brew --prefix)"
   ! strap::path::contains "$STRAP_HOMEBREW_PREFIX/bin" && export PATH="$STRAP_HOMEBREW_PREFIX/bin:$PATH"
 
-  strap::running "Ensuring Homebrew \$PATH entries"
-  local filename="100.homebrew.sh"
-  local src="${STRAP_HOME}/etc/straprc.d/$filename"
-  [[ ! -f "$src" ]] && strap::abort "Invalid strap installation. Missing file: $src"
-  local dest="${STRAP_USER_HOME}/etc/straprc.d/$filename"
-  rm -rf "$dest" # remove any old copy that might be there to ensure we get the latest
-  cp "$src" "$dest"
+  strap::running "Ensuring Homebrew \$PATH entries in ~/.strap/strapenv"
+  if ! grep -q "homebrew:begin" "$STRAP_SHELL_ENV_FILE"; then
+    #strap::action "Adding ~/.strap/strapenv check for homebrew \$PATH entries"
+    local file="$STRAP_HOME/etc/profile.d/homebrewenv.sh"
+    [[ ! -f "$file" ]] && strap::abort "Invalid strap installation. Missing file: $file"
+    echo "" >> "$STRAP_SHELL_ENV_FILE"
+    cat "$file" >> "$STRAP_SHELL_ENV_FILE"
+  fi
   strap::ok
 
 # Add this back in?
