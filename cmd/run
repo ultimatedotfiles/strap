@@ -109,16 +109,37 @@ strap::sudo::enable
 
 strap::bot "Shell Init Files"
 
+clean_legacy_strap_dotfiles() {
+  local val=''
+  if grep -q ".strap/straprc" ~/.bashrc; then
+    val="$(cat ~/.bashrc | awk '/# strap:straprc:begin/,/# strap:straprc:end/{if (!f)print "# strap:straprc:begin\n[ -r \"$HOME/.strap/etc/straprc\" ] && . \"$HOME/.strap/etc/straprc\"\n# strap:straprc:end"; f=1; next}; 1')"
+    echo "${val}" > ~/.bashrc
+  fi
+  if grep -q ".strap/straprc" ~/.zshrc; then
+    val="$(cat ~/.zshrc | awk '/# strap:straprc:begin/,/# strap:straprc:end/{if (!f)print "# strap:straprc:begin\n[ -r \"$HOME/.strap/etc/straprc\" ] && . \"$HOME/.strap/etc/straprc\"\n# strap:straprc:end"; f=1; next}; 1')"
+    echo "${val}" > ~/.zshrc
+  fi
+  if grep -q ".strap/strapenv" ~/.bash_profile; then
+    val="$(cat ~/.bash_profile | awk '/# strap:strapenv:begin/,/# strap:strapenv:end/{if (!f)print "# strap:strapenv:begin\n[ -r \"$HOME/.strap/etc/strapenv\" ] && . \"$HOME/.strap/etc/strapenv\"\n# strap:strapenv:end"; f=1; next}; 1')"
+    echo "${val}" > ~/.bash_profile
+  fi
+  if grep -q ".strap/strapenv" ~/.zshenv; then
+    val="$(cat ~/.zshenv | awk '/# strap:strapenv:begin/,/# strap:strapenv:end/{if (!f)print "# strap:strapenv:begin\n[ -r \"$HOME/.strap/etc/strapenv\" ] && . \"$HOME/.strap/etc/strapenv\"\n# strap:strapenv:end"; f=1; next}; 1')"
+    echo "${val}" > ~/.zshenv
+  fi
+}
+
 ensure_strap_dotfile() {
   local strapname="${1:-}"; strap::assert::has_length "$strapname" '$1 must be a strap dotfile name'
   shift 1
   strap::assert::has_length "$@" 'One or more dotfile names must be specified after the strap dotfile name'
-  local strapfile="$STRAP_USER_HOME/$strapname"
+  local strapfile="$STRAP_USER_HOME/etc/$strapname"
   local filename=
   local file=
 
+  rm -rf "${STRAP_USER_HOME}/$strapname" # remove legacy file
   rm -rf "$strapfile" # always start fresh
-  cp "$STRAP_HOME/etc/profile.d/$strapname" "$strapfile"
+  cp "$STRAP_HOME/etc/$strapname" "$strapfile"
   chmod 600 "$strapfile"
 
   IFS=' ' read -a filenames <<< "$@"
@@ -127,18 +148,22 @@ ensure_strap_dotfile() {
     file="$HOME/$filename"
     strap::fs::file::ensure "$file" '600' "~/$filename"
 
-    strap::running "Checking ~/$filename references ~/.strap/$strapname"
+    strap::running "Checking ~/$filename references ~/.strap/etc/$strapname"
     if ! grep -q "$strapname" "$file"; then
-      strap::action "Enabling ~/.strap/$strapname in ~/$filename"
+      strap::action "Enabling ~/.strap/etc/$strapname in ~/$filename"
       println "$file" ''
       println "$file" "# strap:$strapname:begin"
-      println "$file" "[ -r \"\$HOME/.strap/$strapname\" ] && . \"\$HOME/.strap/$strapname\""
+      println "$file" "[ -r \"\$HOME/.strap/etc/$strapname\" ] && . \"\$HOME/.strap/etc/$strapname\""
       println "$file" "# strap:$strapname:end"
     fi
     strap::ok
   done
 }
 
+mkdir -p "${STRAP_USER_HOME}/etc"
+mkdir -p "${STRAP_USER_HOME}/etc/straprc.d"
+# replace legacy references if they exist:
+clean_legacy_strap_dotfiles
 ensure_strap_dotfile 'strapenv' '.bash_profile' '.zshenv'
 ensure_strap_dotfile 'straprc' '.bashrc' '.zshrc'
 
