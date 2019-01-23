@@ -380,6 +380,7 @@ if strap::os::is_mac && strap::semver::compare "$STRAP_OS_VERSION" '>=' '10.12.2
   else # no all hosts entry - add one:
     strap::action "Creating global 'Host *' entry in ~/.ssh/config"
     [[ -z "$file_contents" ]] && echo '' >> "$file"
+    echo '' >> "$file"
     echo 'Host *' >> "$file"
     echo '  IgnoreUnknown AddKeysToAgent,UseKeychain' >> "$file"
     echo '  UseKeychain yes' >> "$file"
