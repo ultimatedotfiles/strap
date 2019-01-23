@@ -14,7 +14,7 @@ set -a
 strap::xcode::clt::ensure() {
   strap::running "Checking Xcode Command Line Tools"
   XCODE_DIR='/Library/Developer/CommandLineTools'
-  if [ -z "$XCODE_DIR" ] || ! g++ --version >/dev/null 2>&1 || ! pkgutil --pkg-info=com.apple.pkg.CLTools_Executables >/dev/null 2>&1; then
+  if [ -z "$XCODE_DIR" ] || ! "${XCODE_DIR}/usr/bin/g++" --version >/dev/null 2>&1 || ! pkgutil --pkg-info=com.apple.pkg.CLTools_Executables >/dev/null 2>&1; then
 
     strap::action "Installing Xcode Command Line Tools"
     CLT_PLACEHOLDER="/tmp/.com.apple.dt.CommandLineTools.installondemand.in-progress"
@@ -23,7 +23,7 @@ strap::xcode::clt::ensure() {
                   awk -F"*" '/^ +\*/ {print $2}' | sed 's/^ *//' | grep -iE '[0-9|.]' | sort | tail -n1)
     sudo softwareupdate -i "$CLT_PACKAGE"
     rm -f "$CLT_PLACEHOLDER"
-    if ! g++ --version >/dev/null 2>&1; then
+    if ! "${XCODE_DIR}/usr/bin/g++" --version >/dev/null 2>&1; then
       if [ -n "$STRAP_INTERACTIVE" ]; then
         strap::action "Requesting user install of Xcode Command Line Tools"
         xcode-select --install
