@@ -12,10 +12,10 @@ strap::lib::import path || . path.sh
 # on the host OS before strap is run.
 ##
 strap::aptget::init() {
-  sudo apt-get update -qq -o Acquire:Check-Valid-Until=false
-  sudo apt-get install -y -qq software-properties-common
+  sudo apt-get update -qq #-o Acquire:Check-Valid-Until=false
+  sudo apt-get install -y software-properties-common
   sudo apt-add-repository -y ppa:ansible/ansible
-  sudo apt-get update -qq -o Acquire:Check-Valid-Until=false
+  sudo apt-get update -qq #-o Acquire:Check-Valid-Until=false
 }
 
 strap::aptget::pkg::is_installed() {

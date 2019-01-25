@@ -111,19 +111,19 @@ strap::bot "Shell Init Files"
 
 clean_legacy_strap_dotfiles() {
   local val=''
-  if grep -q ".strap/straprc" ~/.bashrc; then
+  if [[ -f ~/.bashrc ]] && grep -q ".strap/straprc" ~/.bashrc; then
     val="$(cat ~/.bashrc | awk '/# strap:straprc:begin/,/# strap:straprc:end/{if (!f)print "# strap:straprc:begin\n[ -r \"$HOME/.strap/etc/straprc\" ] && . \"$HOME/.strap/etc/straprc\"\n# strap:straprc:end"; f=1; next}; 1')"
     echo "${val}" > ~/.bashrc
   fi
-  if grep -q ".strap/straprc" ~/.zshrc; then
+  if [[ -f ~/.zshrc ]] && grep -q ".strap/straprc" ~/.zshrc; then
     val="$(cat ~/.zshrc | awk '/# strap:straprc:begin/,/# strap:straprc:end/{if (!f)print "# strap:straprc:begin\n[ -r \"$HOME/.strap/etc/straprc\" ] && . \"$HOME/.strap/etc/straprc\"\n# strap:straprc:end"; f=1; next}; 1')"
     echo "${val}" > ~/.zshrc
   fi
-  if grep -q ".strap/strapenv" ~/.bash_profile; then
+  if [[ -f ~/.bash_profile ]] && grep -q ".strap/strapenv" ~/.bash_profile; then
     val="$(cat ~/.bash_profile | awk '/# strap:strapenv:begin/,/# strap:strapenv:end/{if (!f)print "# strap:strapenv:begin\n[ -r \"$HOME/.strap/etc/strapenv\" ] && . \"$HOME/.strap/etc/strapenv\"\n# strap:strapenv:end"; f=1; next}; 1')"
     echo "${val}" > ~/.bash_profile
   fi
-  if grep -q ".strap/strapenv" ~/.zshenv; then
+  if [[ -f ~/.zshenv ]] && grep -q ".strap/strapenv" ~/.zshenv; then
     val="$(cat ~/.zshenv | awk '/# strap:strapenv:begin/,/# strap:strapenv:end/{if (!f)print "# strap:strapenv:begin\n[ -r \"$HOME/.strap/etc/strapenv\" ] && . \"$HOME/.strap/etc/strapenv\"\n# strap:strapenv:end"; f=1; next}; 1')"
     echo "${val}" > ~/.zshenv
   fi
@@ -201,6 +201,11 @@ strap::pkgmgr::pkg::ensure ansible
 
 strap::bot "Git & GitHub"
 
+strap::pkgmgr::pkg::ensure openssl
+# libsecret package names are different depending on centos/redhat and ubuntu/debian:
+[[ "$(strap::pkgmgr::id)" == 'yum' ]] && strap::pkgmgr::pkg::ensure libsecret
+[[ "$(strap::pkgmgr::id)" == 'aptget' ]] && strap::pkgmgr::pkg::ensure libsecret-tools
+
 # special handling for git on centos/redhat: the git that is available via the default rpm repos is *old*
 # and we need git to also have git-credential-libsecret
 git_package_name='git'
@@ -219,7 +224,6 @@ if [[ "$(strap::pkgmgr::id)" == 'yum' ]]; then
 #    fi
 #  fi
 fi
-
 strap::pkgmgr::pkg::ensure "$git_package_name"
 
 command -v curl >/dev/null || strap::pkgmgr::pkg::ensure 'curl' # needed to communicate with github api
@@ -319,153 +323,6 @@ if [[ -z "$__strap_git_name" ]]; then # not set in config, try env var:
 fi
 strap::ok
 
-
-#############################################################
-# SSH:
-#############################################################
-
-strap::bot "SSH"
-
-strap::pkgmgr::pkg::ensure openssl
-# libsecret package names are different depending on centos/redhat and ubuntu/debian:
-[[ "$(strap::pkgmgr::id)" == 'yum' ]] && strap::pkgmgr::pkg::ensure libsecret
-[[ "$(strap::pkgmgr::id)" == 'aptget' ]] && strap::pkgmgr::pkg::ensure libsecret-tools
-
-strap::lib::import ssh || source ../lib/ssh.sh
-
-dir="$HOME/.ssh"
-strap::fs::dir::ensure "$dir" 700 "~/.ssh"
-strap::fs::file::ensure "$dir/authorized_keys" 600 "~/.ssh/authorized_keys"
-ssh_known_hosts_file="$dir/known_hosts"
-strap::fs::file::ensure "$ssh_known_hosts_file" 600 "~/.ssh/known_hosts"
-file="$dir/config"
-strap::fs::file::ensure "$file" 600 "~/.ssh/config"
-
-if strap::os::is_mac && strap::semver::compare "$STRAP_OS_VERSION" '>=' '10.12.2'; then
-
-  strap::running "Checking 'Host *' entry in ~/.ssh/config"
-  file_contents="$(cat "$file")"
-  all_hosts_entry="$(echo "$file_contents" | awk '/^Host \*/{p=1}/^ *$/{p=0}p')"
-  if [[ -n "$all_hosts_entry" ]]; then
-    strap::ok
-
-    strap::running "Checking 'IgnoreUnknown' for 'Host *' entry in ~/.ssh/config"
-    if ! echo "$all_hosts_entry" | grep -q 'IgnoreUnknown'; then
-      # The 'Host *' directive doesn't have an IgnoreUnknown line - add one:
-      strap::action "Adding 'IgnoreUnknown AddKeysToAgent,UseKeychain' for 'Host *' entry in ~/.ssh/config"
-      file_contents="$(echo "$file_contents" | awk '1;/Host \*/{print "  IgnoreUnknown AddKeysToAgent,UseKeychain"}')"
-    fi
-    strap::ok
-
-    strap::running "Checking 'AddKeysToAgent' for 'Host *' entry in ~/.ssh/config"
-    if ! echo "$all_hosts_entry" | grep -q 'AddKeysToAgent'; then
-      # The 'Host *' directive doesn't have an AddKeysToAgent line - add one:
-      strap::action "Adding 'AddKeysToAgent yes' for 'Host *' entry in ~/.ssh/config"
-      file_contents="$(echo "$file_contents" | awk '1;/Host \*/{print "  AddKeysToAgent yes"}')"
-    fi
-    strap::ok
-
-    strap::running "Checking 'UseKeychain' for 'Host *' entry in ~/.ssh/config"
-    if ! echo "$all_hosts_entry" | grep -q 'UseKeychain'; then
-      # The 'Host *' directive doesn't have a UseKeychain line - add one:
-      strap::action "Adding 'UseKeychain yes' for 'Host *' entry in ~/.ssh/config"
-      file_contents="$(echo "$file_contents" | awk '1;/Host \*/{print "  UseKeychain yes"}')"
-      all_hosts_entry="$(echo "$file_contents" | awk '/^Host \*/{p=1}/^ *$/{p=0}p')"
-    fi
-    strap::ok
-
-    # persist changes:
-    echo "$file_contents" > "$file"
-
-  else # no all hosts entry - add one:
-    strap::action "Creating global 'Host *' entry in ~/.ssh/config"
-    [[ -z "$file_contents" ]] && echo '' >> "$file"
-    echo 'Host *' >> "$file"
-    echo '  IgnoreUnknown AddKeysToAgent,UseKeychain' >> "$file"
-    echo '  UseKeychain yes' >> "$file"
-    echo '  AddKeysToAgent yes' >> "$file"
-    strap::ok
-  fi
-fi
-chmod 600 "$file"
-
-ssh_key="$dir/id_rsa"
-ssh_pub_key="${ssh_key}.pub"
-
-ssh_key_passphrase=''
-
-strap::running "Checking ~/.ssh/id_rsa keypair"
-if [ ! -f "$ssh_key" ]; then
-
-  strap::action "Creating ~/.ssh/id_rsa keypair"
-
-  if [[ "$STRAP_PROFILES" != *"ci"* ]]; then # anything other than CI environments must have an SSH Key passphrase:
-    strap::ssh::idrsa::passphrase::delete # remove whatever might have existed
-    ssh_key_passphrase="$(strap::ssh::idrsa::passphrase::create)"
-    strap::ssh::idrsa::passphrase:save "$ssh_key_passphrase"
-  fi
-
-  # TODO: __strap_git_email can be a github noreply address - in this case, we want the private/primary email instead
-  ssh_key_comment="Strap auto-generated RSA key"
-  [[ -n "$__strap_git_email" ]] && ssh_key_comment="$ssh_key_comment for $__strap_git_email"
-  ssh-keygen -t rsa -b 4096 -C "$ssh_key_comment" -P "$ssh_key_passphrase" -f "$ssh_key" -q
-fi
-strap::ok
-
-# keypair file permissions
-strap::fs::file::ensure "$ssh_key" 400 "~/.ssh/id_rsa"
-[[ -f "$ssh_pub_key" ]] && strap::fs::file::ensure "$ssh_pub_key" 400 "~/.ssh/id_rsa.pub"
-
-strap::running "Checking ssh-agent"
-set +e # disable auto-fail since we need to explicitly allow failure to check for exact failure return value
-ssh_agent_env_file="$HOME/.ssh/agent.env"
-ssh-add -l &>/dev/null
-if [[ "$?" == "2" ]]; then # need to start an agent
-  if [[ -r "$ssh_agent_env_file" ]]; then eval "$(<${ssh_agent_env_file})" >/dev/null; fi
-  ssh-add -l &>/dev/null
-  if [[ "$?" == "2" ]]; then
-    strap::action "Starting ssh-agent"
-    (umask 066; ssh-agent -s > "${ssh_agent_env_file}"; chmod 400 "${ssh_agent_env_file}")
-    eval "$(<${ssh_agent_env_file})" >/dev/null
-  fi
-fi
-set -e # re-enable auto-fail.  See top of this file for why.
-strap::ok
-
-strap::running "Checking ssh-agent has ~/.ssh/id_rsa"
-if ! ssh-add -l | grep -q "$(ssh-keygen -lf "$ssh_key"  | awk '{print $2}')"; then # key fingerprint not added yet
-  ssh_add_option=''
-  if strap::os::is_mac; then ssh_add_option='-K'; fi
-  if [[ -z "$ssh_key_passphrase" ]]; then
-    ssh-add $ssh_add_option $ssh_key >/dev/null 2>&1 || strap::abort "Could not add $ssh_key to ssh-agent"
-  else # Apply the passphrase:
-    DISPLAY=:0 SSH_ASKPASS="$STRAP_HOME/etc/ssh_ask_pass.sh" ssh-add "$ssh_add_option" "$ssh_key" <<< "$ssh_key_passphrase"
-  fi
-fi
-strap::ok
-
-#############################################################
-# GitHub SSH:
-#############################################################
-
-strap::bot "GitHub SSH"
-
-github_ssh_known_host_entry='github.com ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAq2A7hRGmdnm9tUDbO9IDSwBK6TbQa+PXYPCPy6rbTrTtw7PHkccKrpp0yVhp5HdEIcKr6pLlVDBfOLX9QUsyCOV0wzfjIJNlGEYsdlLJizHhbn2mUjvSAHQqZETYP81eFzLQNnPHt4EVVUh7VfDESU84KezmD5QlWpXLmvU31/yMf+Se8xhHTvKSCZIFImWwoG6mbUoWf9nzpIoaSjB+weqqUUmpaaasXVal72J+UX2B+2RPW3RcT0eOzQgqlJL3RKrTJvdsjE3JEAvGq3lGHSZXy28G3skua2SmVi/w4yCE6gbODqnTWlg7+wC604ydGXA8VJiS5ap43JXiUFFAaQ=='
-
-strap::running "Checking github.com in ~/.ssh/known_hosts"
-if ! grep "^github.com" "$ssh_known_hosts_file" >/dev/null 2>&1; then
-  strap::action "Adding github.com to ~/.ssh/known_hosts"
-  echo "$github_ssh_known_host_entry" >> "$ssh_known_hosts_file"
-fi
-strap::ok
-
-if [[ "$STRAP_GITHUB_ENABLED" == true ]]; then
-  # piping the contents to awk to retain only the first two tokens (the third, if it exists, is the ssh key comment
-  # which GitHub does not store in its JSON, so any equality comparison would fail)
-  ssh_pub_key_contents="$(cat $ssh_pub_key | awk '{print $1 " " $2}')"
-  strap::github::api::user::keys::ensure "$github_token" "$ssh_pub_key_contents"
-fi
-
 #############################################################
 # Run Hook Packages:
 #############################################################
@@ -495,7 +352,6 @@ if [[ "${#STRAP_RUN_HOOK_PACKAGES[@]}" -gt 0 ]]; then
   done
 
 fi
-
 
 # make config/state a little more secure, just in case:
 chmod -R go-rwx "$STRAP_USER_HOME"
