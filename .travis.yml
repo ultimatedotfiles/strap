@@ -22,6 +22,8 @@ matrix:
   - name: "Ubuntu 14.04 Trusty"
     dist: trusty
     before_install:
+      # see https://travis-ci.community/t/then-sudo-apt-get-update-failed-public-key-is-not-available-no-pubkey-6b05f25d762e3157-in-ubuntu-xenial/1728 :
+      - sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 762E3157
       #- sudo apt-get install -y google-chrome
       #- sudo apt-get install -y fluxbox # will install an X server which we need for the 'expect' command
       #- sudo apt-get install -y xvfb
@@ -31,19 +33,19 @@ matrix:
       #- "export DISPLAY=:99.0"
       #- "/sbin/start-stop-daemon --start --quiet --pidfile /tmp/custom_xvfb_99.pid --make-pidfile --background --exec /usr/bin/Xvfb -- :99 -ac -screen 0 1280x1024x16"
       #- sleep 3 # give xvfb some time to start
-  - name: "Mac OS 10.13 High Sierra"
+  - name: "macOS 10.14 Mojave"
+    os: osx
+    osx_image: xcode10.1
+  - name: "macOS 10.13 High Sierra"
     os: osx
     osx_image: xcode9.4
-  - name: "Mac OS 10.12 Sierra"
+  - name: "macOS 10.12 Sierra"
     os: osx
     osx_image: xcode9.2
     env: STRAP_ROOT_ALLOWED=true
-  - name: "Mac OS 10.11 El Capitan"
-    os: osx
-    osx_image: xcode8
-  #- name: "Mac OS 10.10 Yosemite"
-  #  os: osx
-  #  osx_image: xcode6.4
+#  - name: "macOS 10.11 El Capitan"
+#    os: osx
+#    osx_image: xcode8
 
 #branches:
 #  only:
@@ -63,7 +65,7 @@ before_install:
       sudo rm -rf /usr/local/bin/brew
       sudo rm -rf /Library/Developer/CommandLineTools
     fi
-  - rm -rf ~/.ssh/id_rsa # travis puts this here, but we want our script to generate one for strap's purposes
+  # - rm -rf ~/.ssh/id_rsa # travis puts this here, but we want our script to generate one for strap's purposes
   - bash --version
 
 install: false
