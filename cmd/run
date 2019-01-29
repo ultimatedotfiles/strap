@@ -346,10 +346,17 @@ if [[ "${#STRAP_RUN_HOOK_PACKAGES[@]}" -gt 0 ]]; then
   bash_cmd="$(which bash)"
   for package_id in "${STRAP_RUN_HOOK_PACKAGES[@]}"; do
     file="$(strap::pkg::yaml::hook::path "$package_id" run)"
+    export STRAP_HOOK_PACKAGE_ID="${package_id}"
+    if [[ -d "${package_id}" ]]; then
+      export STRAP_HOOK_PACKAGE_DIR="${package_id}"
+    else
+      export STRAP_HOOK_PACKAGE_DIR="$(strap::pkg::id::dir "${package_id}")"
+    fi
     if ! ${bash_cmd} "$file"; then
       strap::abort "Unable to execute package $package_id hook $file"
     fi
   done
+  unset STRAP_HOOK_PACKAGE_ID STRAP_HOOK_PACKAGE_DIR
 
 fi
 

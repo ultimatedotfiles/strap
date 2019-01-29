@@ -78,7 +78,8 @@ before_script:
     fi
 
 script:
-  - bin/strap run && bin/strap run # call a 2nd time to test idempotence
+  - bin/strap run && bin/strap run
+  - bin/strap run --with-hook-package='com.github.lhazlewood:strap-hello' # call with a package
 
 after_script:
   - test/ci/cleanup # remove any test assets that might have been persisted to other systems during the build
