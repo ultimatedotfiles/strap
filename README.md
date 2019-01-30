@@ -20,8 +20,23 @@ Here's a little `strap run` recording to whet your appetite for the things Strap
 
 [![asciicast](https://asciinema.org/a/188040.png)](https://asciinema.org/a/188040)
 
+## Run It
 
-## Installation
+If you want, you can run it immediately:
+    
+```bash
+curl -fsSL https://raw.githubusercontent.com/ultimatedotfiles/strap/master/run | bash
+```
+    
+Or if you have custom hooks to run as well:
+    
+```bash
+curl -fsSL https://raw.githubusercontent.com/ultimatedotfiles/strap/master/run | bash -s -- --with-hook-pacakge='com.github.myorg:myrepo:gitref'
+```
+
+Or you can install it manually.
+
+## Manual Installation
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/ultimatedotfiles/strap/master/install | bash
