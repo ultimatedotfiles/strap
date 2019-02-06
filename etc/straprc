@@ -8,7 +8,7 @@ if [ -d "${HOME}/.strap/releases/current/bin" ]; then
   export PATH="${HOME}/.strap/releases/current/bin:$PATH"
 fi
 
-if [ -d "${HOME}/.strap/etc/straprc.d" ]; then
+if ls -A "${HOME}"/.strap/etc/straprc.d/*.sh >/dev/null 2>&1; then
   for file in "${HOME}"/.strap/etc/straprc.d/*.sh; do
     source "${file}"
   done
