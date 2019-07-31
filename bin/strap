@@ -134,24 +134,28 @@ strap::lib::import io || . ../lib/io.sh
 #shopt -u nullglob
 
 command="${1:-}"
+retval=0
 case "$command" in
   "" | "-h" | "--help" )
     command_script="$STRAP_CMD_DIR/help"
     echo -e "strap version $("$STRAP_SCRIPT" version)\n$("$command_script")"
+    retval="$?"
     ;;
   "-v" | "--version" )
     echo -e "strap version $("$STRAP_SCRIPT" version)"
+    retval="$?"
     ;;
   * )
     command_script="$STRAP_CMD_DIR/$command"
-    if [ ! -f "$command_script" ]; then
+    if [[ ! -f "$command_script" ]]; then
       echo "strap: no such command \`$command'" >&2
       exit 1
     fi
 
     shift 1
-    "$command_script" "$@" && exit 0
+    "$command_script" "$@"
+    retval="$?"
     ;;
 esac
 
-exit 0
+exit ${retval}
