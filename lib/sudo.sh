@@ -28,7 +28,9 @@ strap::sudo::cleanup() {
   fi
 
   if [[ -n "$STRAP_SUDO_WAIT_PID" ]]; then
-    kill "$STRAP_SUDO_WAIT_PID" >/dev/null 2>&1 && wait "$STRAP_SUDO_WAIT_PID" >/dev/null 2>&1
+    if kill "$STRAP_SUDO_WAIT_PID" >/dev/null 2>&1; then
+      wait "$STRAP_SUDO_WAIT_PID" >/dev/null 2>&1 || true
+    fi
     export STRAP_SUDO_WAIT_PID=''
   fi
 
