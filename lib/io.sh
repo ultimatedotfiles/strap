@@ -29,7 +29,7 @@ set -Eeuo pipefail # https://vaneyckt.io/posts/safer_bash_scripts_with_set_euxo_
 #  $1: output variable, required.  The read result will be stored in this variable.
 #
 #  $2: prompt - a string, optional.
-#               Defauls to "Enter value"
+#               Defaults to "Enter value"
 #               Do not end it with a colon character ':', as one will always be printed
 #               at the end of the prompt string automatically.
 #
