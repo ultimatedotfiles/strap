@@ -175,7 +175,6 @@ strap::github::api::token::create() {
           headers="$(echo "$response" | sed "/^\s*$(printf '\r')*$/q" | sed '/^[[:space:]]*$/d' | tail -n +2)"
           body="$(echo "$response" | sed "1,/^\s*$(printf '\r')*$/d")"
           token="$(echo "$body" | jq -r '.token // empty')"
-
           otp_attempts=$((otp_attempts + 1))
 
           if [[ -z "$token" ]]; then
@@ -207,6 +206,24 @@ strap::github::api::token::create() {
 
   # we have a token now - save it to secure storage:
   strap::github::token::save "$username" "$token"
+
+  #Test if we need to do an SSO enable
+  response="$(curl --silent --show-error -i -H "Authorization: token $token" -H 'Content-Type: application/json' https://api.github.com/user/issues)"
+  headers="$(echo "$response" | sed "/^\s*$(printf '\r')*$/q" | sed '/^[[:space:]]*$/d' | tail -n +2)"
+  if echo "$headers" | grep -q 'X-GitHub-SSO:'; then
+    # Linux based system
+    if command -v gio >/dev/null; then
+      gio open https://github.com/settings/tokens
+    # Mac
+    elif command -v open >/dev/null; then
+      open https://github.com/settings/tokens
+    fi
+    echo "One or more of the Github Orgs you belong to requires that you to enable an SSO personal access token before proceeding. Visit https://github.com/settings/tokens in your web browser and authorize the token"
+    echo
+    echo "For more information: https://help.github.com/en/articles/authorizing-a-personal-access-token-for-use-with-a-saml-single-sign-on-organization."
+    echo
+    read -r -p "Press [Enter] key once you have enabled the token..." ignore </dev/tty
+  fi
 }
 
 strap::github::api::user() {
