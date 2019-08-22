@@ -153,7 +153,6 @@ strap::github::api::token::create() {
     password_attempts=$((password_attempts + 1))
 
     strap::assert::has_length "$status_code" 'Unable to parse GitHub response status.  GitHub response format is likely to have changed.  Please report this to the Strap developers.'
-
     if [[ ${status_code} -eq 401 ]]; then
 
       if echo "$headers" | grep -q 'X-GitHub-OTP: required'; then # password correct but two-factor is required
@@ -175,7 +174,6 @@ strap::github::api::token::create() {
           headers="$(echo "$response" | sed "/^\s*$(printf '\r')*$/q" | sed '/^[[:space:]]*$/d' | tail -n +2)"
           body="$(echo "$response" | sed "1,/^\s*$(printf '\r')*$/d")"
           token="$(echo "$body" | jq -r '.token // empty')"
-
           otp_attempts=$((otp_attempts + 1))
 
           if [[ -z "$token" ]]; then
@@ -203,6 +201,21 @@ strap::github::api::token::create() {
       msg="Reached the maximum number of GitHub password attempts. Please locate the correct password for the '$username' GitHub account and then run Strap again"
     fi
     strap::abort "$msg"
+  fi
+
+  #Test if we need to do an SSO enable
+  response="$(curl --silent --show-error -i -H "Authorization: token $token" -H 'Content-Type: application/json' https://api.github.com/user/issues)"
+  headers="$(echo "$response" | sed "/^\s*$(printf '\r')*$/q" | sed '/^[[:space:]]*$/d' | tail -n +2)"
+  if echo "$headers" | grep -q 'X-GitHub-SSO:'; then
+    # Linux based system
+    if command -v gio >/dev/null; then
+      gio open https://github.com/settings/tokens
+    # Mac
+    else
+      open https://github.com/settings/tokens
+    fi
+    echo "One or more of your Github Org requires you to enable the token before using. See more details on https://help.github.com/en/articles/authorizing-a-personal-access-token-for-use-with-a-saml-single-sign-on-organization."
+    read -r -p "Press [Enter] key once you have enabled the token..."  ignore </dev/tty
   fi
 
   # we have a token now - save it to secure storage:
