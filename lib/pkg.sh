@@ -126,7 +126,13 @@ strap::pkg::yaml::path() {
     dir="$(strap::pkg::id::dir "$arg")"
   fi
 
-  local file="$dir/package.yml"
+  local -r fname="package.yml"
+
+  local file="${dir}/.strap/${fname}" # prefer a <repo>/.strap/ directory convention
+  if [[ ! -f "${file}" ]]; then # fall back to repo root:
+    file="${dir}/${fname}"
+  fi
+
   strap::assert "[ -f $file ]" "Package directory $dir does not contain a package.yml file."
 
   echo "$file"
