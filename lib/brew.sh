@@ -25,6 +25,9 @@ strap::brew::init() {
     strap::running "Checking Homebrew updates"
     brew update >/dev/null
     brew upgrade
+    strap::ok
+    strap::running "Checking Homebrew cleanup"
+    brew cleanup >/dev/null
   else
     strap::action "Installing Homebrew"
     (

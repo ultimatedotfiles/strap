@@ -17,6 +17,7 @@ strap::lib::import fs || source ../lib/fs.sh
 strap::lib::import os || source ../lib/os.sh
 strap::lib::import pkgmgr || source ../lib/pkgmgr.sh
 strap::lib::import pkg || source ../lib/pkg.sh
+strap::lib::import ansible || source ../lib/ansible.sh
 
 STRAP_SCRIPT="${STRAP_SCRIPT:-}" && [[ -z "$STRAP_SCRIPT" ]] && echo "STRAP_SCRIPT is not set" && exit 1
 STRAP_HOME="${STRAP_HOME:-}" && [[ -z "$STRAP_HOME" ]] && echo "STRAP_HOME is not set" && exit 1
@@ -42,6 +43,7 @@ array_contains() {
   return 1
 }
 
+STRAP_ANSIBLE_ROLES=()
 STRAP_RUN_HOOK_PACKAGES=()
 # getopts loop logic from https://stackoverflow.com/a/28466267/407170
 declare args="${@:-}"
@@ -49,6 +51,13 @@ while getopts "p:-:" arg ${args}; do
   case "$arg" in
     - )  LONG_OPTARG="${OPTARG#*=}"
          case $OPTARG in
+           with-ansible-role=?* )
+             if [[ "${#STRAP_ANSIBLE_ROLES[@]}" -eq 0 ]] || \
+                ! array_contains "${STRAP_ANSIBLE_ROLES[@]}" "${LONG_OPTARG}" ]]; then # prevent adding the same package more than once
+               STRAP_ANSIBLE_ROLES+=("$LONG_OPTARG")
+             fi
+             ;;
+           with-ansible-role* )  echo "No arg for --$OPTARG option" >&2; exit 2 ;;
            with-hook-package=?* )
              if [[ "${#STRAP_RUN_HOOK_PACKAGES[@]}" -eq 0 ]] || \
                 ! array_contains "${STRAP_RUN_HOOK_PACKAGES[@]}" "${LONG_OPTARG}" ]]; then # prevent adding the same package more than once
@@ -64,6 +73,12 @@ while getopts "p:-:" arg ${args}; do
 done
 shift $((OPTIND-1)) # remove parsed options and args from $@ list
 #echo "packages: ${STRAP_RUN_HOOK_PACKAGES[@]}"
+
+# currently ansible roles and hook packages together are incompatible:
+if [[ "${#STRAP_ANSIBLE_ROLES[@]}" -gt 0 && "${#STRAP_RUN_HOOK_PACKAGES[@]}" -gt 0 ]]; then
+  echo "--with-ansible-role and --with-hook-package arguments cannot be used together.  Use either." >&2
+  exit 2
+fi
 
 cleanup() {
   set +e
@@ -358,6 +373,9 @@ if [[ "${#STRAP_RUN_HOOK_PACKAGES[@]}" -gt 0 ]]; then
   done
   unset STRAP_HOOK_PACKAGE_ID STRAP_HOOK_PACKAGE_DIR
 
+elif [[ "${#STRAP_ANSIBLE_ROLES[@]}" -gt 0 ]]; then
+  strap::bot "Run Ansible Roles"
+  strap::ansible::roles::run "${STRAP_ANSIBLE_ROLES[@]}"
 fi
 
 # make config/state a little more secure, just in case:
