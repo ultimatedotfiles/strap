@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+
+set -Eeuo pipefail # https://vaneyckt.io/posts/safer_bash_scripts_with_set_euxo_pipefail/
+
+TRAVIS_OSX_IMAGE="${TRAVIS_OSX_IMAGE:-}"
+DBUS_SESSION_BUS_ADDRESS="${DBUS_SESSION_BUS_ADDRESS:-}"
+
+function init_ubuntu_keyring() {
+  #sudo apt-get install -y gnome-keyring
+  #sudo apt-get install -y python-gnomekeyring
+  # see https://travis-ci.community/t/then-sudo-apt-get-update-failed-public-key-is-not-available-no-pubkey-6b05f25d762e3157-in-ubuntu-xenial/1728 :
+  sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 762E3157
+
+  if command -v dbus-launch >/dev/null; then
+    if [[ -z "$DBUS_SESSION_BUS_ADDRESS" ]]; then eval `dbus-launch --sh-syntax`; fi
+    dbus-launch /usr/bin/python -c "import gnomekeyring;gnomekeyring.create_sync('login', '');"
+  fi
+}
+
+function brew_uninstall() {
+  brew cleanup
+  URL='https://raw.githubusercontent.com/Homebrew/install/master/uninstall'
+  curl -sLO "${URL}"
+  chmod +x uninstall
+  ./uninstall --force
+  rm -rf /usr/local/Homebrew
+  sudo rm -rf /usr/local/Caskroom
+  sudo rm -rf /usr/local/bin/brew
+  sudo rm -rf /Library/Developer/CommandLineTools
+}
+
+function main() {
+
+  echo "Bash version: $BASH_VERSION"
+
+  if command -v apt-get >/dev/null 2>&1; then # on Ubuntu or Debian
+    init_ubuntu_keyring # enable credential storage since strap can auto-create and save GitHub API keys:
+  elif [[ -n "$TRAVIS_OSX_IMAGE" ]]; then
+    # Remove the developer environment that travis installs by default - we need to ensure our project can install it:
+    brew_uninstall
+  fi
+  #- rm -rf ~/.ssh/id_rsa # travis puts this here, but we want our script to generate one for strap's purposes
+}
+main

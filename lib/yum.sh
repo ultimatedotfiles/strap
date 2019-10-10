@@ -10,13 +10,11 @@ strap::lib::import path || . path.sh
 strap::yum::pkg::is_installed() {
   local package_id="${1:-}" && strap::assert::has_length "$package_id" '$1 must be the package id'
   sudo yum list installed "$package_id" >/dev/null 2>&1
-  return "$?"
 }
 
 strap::yum::pkg::install() {
   local package_id="${1:-}" && strap::assert::has_length "$package_id" '$1 must be the package id'
   sudo yum -y install "$package_id"
-  return "$?"
 }
 
 ##
@@ -27,7 +25,7 @@ strap::yum::init() {
   if ! strap::yum::pkg::is_installed 'epel-release'; then # needed for jq and maybe others
     strap::yum::pkg::install 'epel-release'
   fi
-  if ! strap::yum::pkg::is_installed 'ius-release'; then # needed for git2u (up to date git and git-credential-libsecret)
+  if ! strap::yum::pkg::is_installed 'ius-release'; then # needed for git2u (up to date git and git-credential-libsecret) and python3
     sudo yum -y install 'https://centos7.iuscommunity.org/ius-release.rpm'
   fi
 }
