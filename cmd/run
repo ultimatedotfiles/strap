@@ -17,6 +17,7 @@ strap::lib::import fs || source ../lib/fs.sh
 strap::lib::import os || source ../lib/os.sh
 strap::lib::import pkgmgr || source ../lib/pkgmgr.sh
 strap::lib::import pkg || source ../lib/pkg.sh
+strap::lib::import python || source ../lib/python.sh
 strap::lib::import ansible || source ../lib/ansible.sh
 
 STRAP_SCRIPT="${STRAP_SCRIPT:-}" && [[ -z "$STRAP_SCRIPT" ]] && echo "STRAP_SCRIPT is not set" && exit 1
@@ -199,16 +200,21 @@ strap::ok
 #############################################################
 
 strap::bot 'Package Manager'
-
 strap::pkgmgr::init
+
+#############################################################
+# Python & Pip
+#############################################################
+
+strap::bot 'Python & Pip'
+strap::python::install
 
 #############################################################
 # Ansible
 #############################################################
 
 strap::bot 'Ansible'
-
-strap::pkgmgr::pkg::ensure ansible
+strap::ansible::install
 
 #############################################################
 # Git & GitHub:
@@ -232,12 +238,6 @@ if [[ "$(strap::pkgmgr::id)" == 'yum' ]]; then
     sudo yum -y erase git >/dev/null 2>&1 || true
     strap::ok
   fi
-#  git_exe_path="$(git command -v 2>/dev/null || true)"
-#  if [[ -n "$git_exe_path" ]]; then # git is installed.  See if it came from git2u, which is our required package
-#    if ! rpm -qf "$git_exe_path" | grep git2u >/dev/null 2>&1; then
-#      #uninstall incompatible
-#    fi
-#  fi
 fi
 strap::pkgmgr::pkg::ensure "$git_package_name"
 
@@ -345,12 +345,14 @@ if [[ "${#STRAP_RUN_HOOK_PACKAGES[@]}" -gt 0 ]]; then
 
   strap::bot "Run Hook Packages"
 
-  # We use yq or python yaml (whichever is available) to convert yaml to json and then use jq to read package metadata
-  if strap::os::is_mac; then
-    strap::pkgmgr::pkg::ensure yq
-  else
-    strap::pkgmgr::pkg::ensure pyyaml
-  fi
+  # Ensure pyyaml is available so we can read strap package.yml metadata files:
+  strap::running "Ensuring strap virtualenv pyyaml"
+  set +e
+  output="$(python -m pip install --upgrade pyyaml 2>&1)"
+  retval="$?"
+  set -e
+  [[ "${retval}" -eq 0 ]] || strap::abort "Error: ${output}"
+  strap::ok
 
   # ensure packages exist, or download and are valid:
   for package_id in "${STRAP_RUN_HOOK_PACKAGES[@]}"; do

@@ -26,6 +26,7 @@ strap::os::distro() {
   local distro=''
   [[ "$STRAP_OS" == 'mac' ]] && distro='darwin'
   [[ -z "$distro" ]] && [[ -f '/etc/ubuntu-release' ]] && distro='ubuntu'
+  [[ -z "$distro" ]] && [[ -f '/etc/fedora-release' ]] && distro='fedora'
   [[ -z "$distro" ]] && [[ -f '/etc/centos-release' ]] && distro='centos'
   [[ -z "$distro" ]] && [[ -f '/etc/redhat-release' ]] && distro='redhat'
   [[ -z "$distro" ]] && distro='linux' # default

@@ -26,7 +26,7 @@ strap::brew::init() {
     brew update >/dev/null
     brew upgrade
     strap::ok
-    strap::running "Checking Homebrew cleanup"
+    strap::running "Ensuring Homebrew cleanup"
     brew cleanup >/dev/null
   else
     strap::action "Installing Homebrew"
@@ -44,7 +44,8 @@ strap::brew::init() {
   strap::ok
 
   STRAP_HOMEBREW_PREFIX="$(brew --prefix)"
-  ! strap::path::contains "$STRAP_HOMEBREW_PREFIX/bin" && export PATH="$STRAP_HOMEBREW_PREFIX/bin:$PATH"
+  strap::path::contains "${STRAP_HOMEBREW_PREFIX}/sbin" || export PATH="${STRAP_HOMEBREW_PREFIX}/sbin:${PATH}"
+  strap::path::contains "${STRAP_HOMEBREW_PREFIX}/bin" || export PATH="${STRAP_HOMEBREW_PREFIX}/bin:${PATH}"
 
   strap::running "Ensuring Homebrew \$PATH entries"
   local filename="100.homebrew.sh"

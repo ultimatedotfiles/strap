@@ -141,12 +141,7 @@ strap::pkg::yaml::path() {
 strap::pkg::yaml::jq() {
   local -r file="${1:-}" && strap::assert "[ -f $file ]" '$1 must be a Strap package.yml file'
   local -r query="${2:-}" && strap::assert::has_length "$query" '$2 must be a jq query string'
-
-  if command -v yq >/dev/null; then
-    yq r -j "$file" | jq -r "$query"
-  else
-    python -c 'import sys, yaml, json; json.dump(yaml.load(sys.stdin), sys.stdout, indent=2)' < "$file" | jq -r "$query"
-  fi
+  python -c 'import sys, yaml, json; json.dump(yaml.load(sys.stdin), sys.stdout, indent=2)' < "$file" | jq -r "$query"
 }
 
 strap::pkg::yaml::hook::path() {
