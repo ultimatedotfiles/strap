@@ -21,11 +21,9 @@ strap::aptget::init() {
 strap::aptget::pkg::is_installed() {
   local package_id="${1:-}" && strap::assert::has_length "$package_id" '$1 must be the package id'
   sudo dpkg-query -W -f='${Status}' "$package_id" 2>/dev/null | grep -q "ok installed"
-  return "$?"
 }
 
 strap::aptget::pkg::install() {
   local package_id="${1:-}" && strap::assert::has_length "$package_id" '$1 must be the package id'
   sudo apt-get install -y "$package_id"
-  return "$?"
 }
