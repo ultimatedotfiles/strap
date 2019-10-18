@@ -6,6 +6,7 @@ command -v strap::lib::import >/dev/null || { echo "strap::lib::import is not av
 strap::lib::import lang || . lang.sh
 strap::lib::import logging || . logging.sh
 strap::lib::import path || . path.sh
+strap::lib::import os || . os.sh
 
 ##
 # Ensures any initialization or setup for apt-get is required.  This can be a no-op if it is always already installed
@@ -14,7 +15,7 @@ strap::lib::import path || . path.sh
 strap::aptget::init() {
   sudo apt-get update -qq #-o Acquire:Check-Valid-Until=false
   sudo apt-get install -y software-properties-common
-  sudo apt-add-repository -y ppa:ansible/ansible
+  sudo add-apt-repository -y ppa:deadsnakes/ppa # for Python
   sudo apt-get update -qq #-o Acquire:Check-Valid-Until=false
 }
 

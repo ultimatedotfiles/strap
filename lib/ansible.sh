@@ -15,6 +15,7 @@ strap::lib::import exec || . exec.sh
 
 STRAP_HOME="${STRAP_HOME:-}"; [[ -n "$STRAP_HOME" ]] || { echo "STRAP_HOME is not set" >&2; exit 1; }
 STRAP_USER_HOME="${STRAP_USER_HOME:-}"; [[ -n "$STRAP_USER_HOME" ]] || { echo "STRAP_USER_HOME is not set" >&2; exit 1; }
+STRAP_INTERACTIVE="${STRAP_INTERACTIVE:-}"; [[ -n "$STRAP_INTERACTIVE" ]] || STRAP_INTERACTIVE=true
 STRAP_ANSIBLE_VERSION="${STRAP_ANSIBLE_VERSION:-}"
 STRAP_ANSIBLE_DIR="${STRAP_USER_HOME}/ansible"
 STRAP_ANSIBLE_LOG_FILE="${STRAP_ANSIBLE_DIR}/ansible.log"
@@ -81,11 +82,49 @@ function strap::ansible::roles::run() {
 
   [[ "$#" -gt 0 ]] || strap::abort "One or more ansible role identifiers are required as function arguments."
 
-  local -a role_ids=("$@")
-  local role_id repo_url= playbook_dir="${STRAP_ANSIBLE_IMPLICIT_PLAYBOOK_DIR}" roles_dir= interpreter=
+  local role_id= value=
+  local -a role_ids=()
+  local -a params=()
+
+  while (( "$#" )); do
+    [[ "$1" == --*=* ]] && set -- "${1%%=*}" "${1#*=}" "${@:2}" # normalize `--foo=bar` into `--foo bar`
+    case "$1" in
+      --role|--with-role)
+        role_id="${2:-}"
+        [[ -n "${role_id}" && "${role_id}" != '-'* ]] || strap::abort "strap lansible: $1 argument requires a value"
+        role_ids+=("${role_id}")
+        shift 2
+        ;;
+      -i|--inventory|--inventory-file)
+        strap::abort "strap lansible: $1 is not supported since localhost is always used (lansible = 'localhost ansible')."
+        ;;
+      -K|--ask-become-pass) # ignore - we add this no matter what
+        shift
+        ;;
+      --) # end argument parsing
+        shift
+        break
+        ;;
+      *) # preserve positional args
+        params+=("$1")
+        shift
+        ;;
+    esac
+  done
+
+  if [[ "${STRAP_INTERACTIVE}" == true ]]; then # false in CI
+    params+=( '--ask-become-pass' )
+  fi
+
+  if [[ "${#params[@]}" -gt 0 ]]; then
+    set -- "${params[@]}" # reset positional arguments
+  fi
+
+  local repo_url= roles_dir= interpreter= playbook_dir="${STRAP_ANSIBLE_IMPLICIT_PLAYBOOK_DIR}"
   local requirements_file= playbook_file=
   local src= name= scm= version=
   local -a extra_vars
+  role_id=''
   roles_dir="${playbook_dir}/roles"
 
   # all runs start fresh:
@@ -198,16 +237,18 @@ EOF
   done
   echo "" >> "${playbook_file}"
 
-  interpreter="$(strap::ansible::python::interpreter)"
-  extra_vars=( '-e' "ansible_python_interpreter=${interpreter}" )
-
   (
     cd "${playbook_dir}"
     export ANSIBLE_LOG_PATH="${STRAP_ANSIBLE_LOG_FILE}"
     unset -f $(compgen -A function strap)
     ansible-galaxy install -r "${requirements_file}" --force
-    printf "\n Running Ansible with BECOME (aka sudo) password.  Please enter your " # make the --ask-become-pass prompt more visible/obvious
-    ansible-playbook -i "${STRAP_HOME}/etc/ansible/hosts" "${extra_vars[@]}" --ask-become-pass "${playbook_file}"
+    printf '\nRunning ansible to manage localhost.'
+    if [[ "${STRAP_INTERACTIVE}" == true ]]; then
+      printf ' Please enter your SUDO/' # make the --ask-become-pass prompt more visible/obvious
+    else
+      printf '\n'
+    fi
+    ansible-playbook -i "${STRAP_HOME}/etc/ansible/hosts" "$@" "${playbook_file}"
   )
 }
 

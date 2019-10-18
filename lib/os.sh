@@ -8,6 +8,8 @@ strap::lib::import lang || . lang.sh
 
 set -a
 
+__strap_os_distro="${__strap_os_distro:-}"
+
 strap::os::category() {
   local os
   local out="$(uname -s)"
@@ -23,16 +25,26 @@ strap::os::category() {
 readonly STRAP_OS="$(strap::os::category)"
 
 strap::os::distro() {
+
+  [[ -n "${STRAP_OS_DISTRO:-}" ]] && echo "${STRAP_OS_DISTRO}" && return 0 # cached, exit early for better performance
+
   local distro=''
   [[ "$STRAP_OS" == 'mac' ]] && distro='darwin'
-  [[ -z "$distro" ]] && [[ -f '/etc/ubuntu-release' ]] && distro='ubuntu'
-  [[ -z "$distro" ]] && [[ -f '/etc/fedora-release' ]] && distro='fedora'
-  [[ -z "$distro" ]] && [[ -f '/etc/centos-release' ]] && distro='centos'
-  [[ -z "$distro" ]] && [[ -f '/etc/redhat-release' ]] && distro='redhat'
-  [[ -z "$distro" ]] && distro='linux' # default
+  local output=
+  output="$(lsb_release -ds 2>/dev/null || cat /etc/*release 2>/dev/null | head -n1 || uname -om 2>/dev/null || uname -s)"
+
+  case "${output}" in
+    Darwin)  distro='darwin' ;;
+    *Ubuntu*) distro='ubuntu' ;;
+    *Debian*) distro='debian' ;;
+    *CentOS*) distro='centos' ;;
+    *'Red Hat'*) distro='redhat' ;;
+    *) distro='linux'
+  esac
+
   echo "$distro"
 }
-readonly STRAP_OS_DISTRO="$(strap::os::distro)"
+declare -rx STRAP_OS_DISTRO="$(strap::os::distro)"
 
 strap::os::is_mac() {
   if [[ "$STRAP_OS" == 'mac' ]]; then

@@ -16,52 +16,62 @@ strap::lib::import exec || . exec.sh
 STRAP_HOME="${STRAP_HOME:-}"; [[ -n "$STRAP_HOME" ]] || { echo "STRAP_HOME is not set" >&2; exit 1; }
 STRAP_USER_HOME="${STRAP_USER_HOME:-}"; [[ -n "$STRAP_USER_HOME" ]] || { echo "STRAP_USER_HOME is not set" >&2; exit 1; }
 
+STRAP_PYTHONUSERBASE="${STRAP_PYTHONUSERBASE:-}"; [[ -n "$STRAP_PYTHONUSERBASE" ]] || STRAP_PYTHONUSERBASE="${STRAP_USER_HOME}/python"
+
 set -a
 
 function strap::python::install() {
 
-  local distro= pkgname='python3' output= retval= venv_dir="${STRAP_USER_HOME}/.venv"
+  local distro= pythonpkg= pythoncmd= venvpkg= pippkg= output= retval= venv_dir="${STRAP_USER_HOME}/.venv"
 
   distro="$(strap::os::distro)"
 
   case "${distro}" in
-    darwin)        pkgname='python'   ;;
-    redhat|centos) pkgname='python36' ;;
-    fedora)        pkgname='python37' ;;
+    darwin)
+      pythonpkg='python'
+      pythoncmd='python3'
+      ;;
+    ubuntu)
+      pythonpkg='python3.7'
+      [[ "$(strap::os::version)" == '14'* ]] && pythonpkg='python3.6' # python 3.7 on 14.04 has pip ssl problems
+      venvpkg="${pythonpkg}-venv"
+      pythoncmd="${pythonpkg}"
+      ;;
+    debian)
+      pythonpkg='python3.7'
+      venvpkg="${pythonpkg}-venv"
+      pythoncmd="${pythonpkg}"
+      ;;
+    *)
+      pythonpkg='python36'
+      pippkg="${pythonpkg}-pip"
+      venvpkg="${pythonpkg}-virtualenv"
+      pythoncmd='python3.6'
+      ;;
   esac
 
-  strap::pkgmgr::pkg::ensure "${pkgname}"
-  if ! command -v python3 >/dev/null 2>&1; then
+  strap::pkgmgr::pkg::ensure "${pythonpkg}"
+  if ! command -v "${pythoncmd}" >/dev/null 2>&1; then
     strap::abort "Python 3 could not be installed."
   fi
 
-  # =========== Pip ===================
-  if [[ "${distro}" != 'darwin' ]]; then # homebrew python already comes with pip installed
-    strap::pkgmgr::pkg::ensure "${pkgname}-pip"
-  fi
+  [[ -n "${pippkg}" ]] && strap::pkgmgr::pkg::ensure "${pippkg}"
 
   # =========== Virtualenv ============
   if [[ "${distro}" == 'darwin' ]]; then
     strap::running "Checking python virtualenv"
     if ! python3 -c "import virtualenv" >/dev/null 2>&1; then
       strap::action "Installing python virtualenv"
-      strap::exec python3 -m pip install --upgrade virtualenv
+      strap::exec "${pythoncmd}" -m pip install --user --upgrade virtualenv
     fi
     strap::ok
   else # linuxes:
-    if [[ "${STRAP_PKGMGR_ID}" == 'aptget' ]]; then
-      if [[ "$(strap::os::version)" == '14'* ]]; then
-        strap::pkgmgr::pkg::ensure "${pkgname}.4-venv"
-      else
-        strap::pkgmgr::pkg::ensure "${pkgname}-venv"
-      fi
-    else
-      strap::pkgmgr::pkg::ensure "${pkgname}-virtualenv"
-    fi
+    strap::pkgmgr::pkg::ensure python3-openssl
+    strap::pkgmgr::pkg::ensure "${venvpkg}"
   fi
 
   strap::running "Ensuring strap virtualenv"
-  strap::exec python3 -m venv "${venv_dir}"
+  "${pythoncmd}" -m venv "${venv_dir}"
   set +eu
   source "${venv_dir}/bin/activate" || strap::abort "Error - could not source ${venv_dir}/bin/activate"
   set -eu

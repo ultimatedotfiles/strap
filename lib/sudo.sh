@@ -63,10 +63,10 @@ strap::sudo::enable() {
     # we explicitly kill it with its PID, whichever comes first:
 
     # disable debug output - it collides with the foreground debug output
-    [ -n "$STRAP_DEBUG" ] && set +x
+    [[ -n "$STRAP_DEBUG" ]] && set +x
     while true; do sudo -vn >/dev/null 2>&1; sleep 1; kill -0 "$$" >/dev/null 2>&1 || exit; done &
     # re-enable debug output if necessary:
-    [ -n "$STRAP_DEBUG" ] && set -x
+    [[ -n "$STRAP_DEBUG" ]] && set -x
 
     export STRAP_SUDO_WAIT_PID="$!"
   fi
