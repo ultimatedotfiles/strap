@@ -66,7 +66,8 @@ function strap::python::install() {
     fi
     strap::ok
   else # linuxes:
-    strap::pkgmgr::pkg::ensure python3-openssl
+    # TODO: is this necessary ?
+    #strap::pkgmgr::pkg::ensure python3-openssl # only for ubuntu/debian.  CentOS/Redhat is python3-pyOpenSSL
     strap::pkgmgr::pkg::ensure "${venvpkg}"
   fi
 
