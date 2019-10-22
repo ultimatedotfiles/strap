@@ -29,7 +29,7 @@ strap::xcode::clt::ensure() {
     sudo softwareupdate -i "$CLT_PACKAGE"
     rm -f "$CLT_PLACEHOLDER"
     if ! "${XCODE_DIR}/usr/bin/g++" --version >/dev/null 2>&1; then
-      if [ -n "$STRAP_INTERACTIVE" ]; then
+      if [[ -n "$STRAP_INTERACTIVE" ]]; then
         strap::action "Requesting user install of Xcode Command Line Tools"
         xcode-select --install
       else
@@ -43,7 +43,7 @@ strap::xcode::clt::ensure() {
 
 strap::xcode::clt::ensure_license() {
   if /usr/bin/xcrun clang 2>&1 | grep -q license; then
-    if [ -n "$STRAP_INTERACTIVE" ]; then
+    if [[ -n "$STRAP_INTERACTIVE" ]]; then
       strap::running "Asking for Xcode license confirmation"
       sudo xcodebuild -license
       strap::ok

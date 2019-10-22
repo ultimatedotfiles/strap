@@ -32,5 +32,6 @@ function brew_uninstall() {
 function main() {
   bin/strap run && bin/strap run
   bin/strap run --with-hook-package='com.github.lhazlewood:strap-hello' # call with a package
+  STRAP_INTERACTIVE=false bin/strap lansible --role='lhazlewood/ansible-role-test' # call with an ansible role
 }
 main

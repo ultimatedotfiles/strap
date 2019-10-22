@@ -1,0 +1,321 @@
+#!/usr/bin/env bash
+# Summary: Runs strap to ensure your machine is fully configured
+# Usage: strap lansible
+
+set -Eeuo pipefail # https://vaneyckt.io/posts/safer_bash_scripts_with_set_euxo_pipefail/
+
+if ! command -v strap::lib::import >/dev/null; then
+  echo "This file is not intended to be run or sourced outside of a strap execution context." >&2
+  [[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 1 || exit 1 # if sourced, return 1, else running as a command, so exit
+fi
+
+STRAP_DEBUG="${STRAP_DEBUG:-}" && [ -n "$STRAP_DEBUG" ] && set -x
+SUDO_PID="${SUDO_PID:-}"
+strap::lib::import io || source ../lib/io.sh
+strap::lib::import logging || source ../lib/logging.sh
+strap::lib::import sudo || source ../lib/sudo.sh
+strap::lib::import fs || source ../lib/fs.sh
+strap::lib::import os || source ../lib/os.sh
+strap::lib::import pkgmgr || source ../lib/pkgmgr.sh
+strap::lib::import pkg || source ../lib/pkg.sh
+strap::lib::import python || source ../lib/python.sh
+strap::lib::import ansible || source ../lib/ansible.sh
+
+STRAP_SCRIPT="${STRAP_SCRIPT:-}"; [[ -n "$STRAP_SCRIPT" ]] || strap::abort "STRAP_SCRIPT is not set"
+STRAP_HOME="${STRAP_HOME:-}"; [[ -n "$STRAP_HOME" ]] || strap::abort "STRAP_HOME is not set"
+STRAP_USER="${STRAP_USER:-}"; [[ -n "$STRAP_USER" ]] || strap::abort "STRAP_USER is not set"
+STRAP_USER_HOME="${STRAP_USER_HOME:-}"; [[ -n "$STRAP_USER_HOME" ]] || strap::abort "STRAP_USER_HOME is not set"
+STRAP_CMD_DIR="${STRAP_CMD_DIR:-}"; [[ -n "$STRAP_CMD_DIR" ]] || strap::abort "STRAP_CMD_DIR is not set"
+STRAP_LIB_DIR="${STRAP_LIB_DIR:-}"; [[ -n "$STRAP_LIB_DIR" ]] || strap::abort "STRAP_LIB_DIR is not set"
+STRAP_INTERACTIVE="${STRAP_INTERACTIVE:-}"; [[ -n "$STRAP_INTERACTIVE" ]] || strap::abort "STRAP_INTERACTIVE is not set"
+STRAP_ROOT_ALLOWED="${STRAP_ROOT_ALLOWED:-}"; [[ -n "$STRAP_ROOT_ALLOWED" ]] || STRAP_ROOT_ALLOWED=false # for CI reasons only
+STRAP_GITHUB_ENABLED="${STRAP_GITHUB_ENABLED:-}"; [[ -n "$STRAP_GITHUB_ENABLED" ]] || STRAP_GITHUB_ENABLED=true
+
+CLT_PLACEHOLDER="${CLT_PLACEHOLDER:-}"
+STRAP_STEP=''
+STRAP_SUCCESS=''
+STRAP_QUIET_FLAG="-q"
+Q="$STRAP_QUIET_FLAG"
+
+STRAP_ISSUES_URL="https://github.com/ultimatedotfiles/strap/issues/new"
+
+function array_contains() {
+  local -r arr="${1:-}" value="${2:-}"
+  for e in "${arr[@]}"; do [[ "$e" == "$value" ]] && return 0; done
+  return 1
+}
+
+function cleanup() {
+  set +e
+  rm -f "$CLT_PLACEHOLDER"
+  strap::sudo::cleanup
+  if [[ -z "$STRAP_SUCCESS" ]]; then
+    if [[ -n "$STRAP_STEP" ]]; then
+      echo "!!! $STRAP_STEP FAILED" >&2
+    else
+      echo "!!! FAILED" >&2
+    fi
+    if [[ -z "$STRAP_DEBUG" ]]; then
+      echo "!!! Run '$0 --debug' for debugging output." >&2
+      echo "!!! If you're stuck: file an issue with debugging output at:" >&2
+      echo "!!!   $STRAP_ISSUES_URL" >&2
+    fi
+  fi
+}
+
+function println() {
+  local file="${1:-}"
+  local msg="${2:-}"
+  echo "$msg" >> "$file"
+}
+
+function clean_legacy_strap_dotfiles() {
+  local val=''
+  if [[ -f ~/.bashrc ]] && grep -q ".strap/straprc" ~/.bashrc; then
+    val="$(cat ~/.bashrc | awk '/# strap:straprc:begin/,/# strap:straprc:end/{if (!f)print "# strap:straprc:begin\n[ -r \"$HOME/.strap/etc/straprc\" ] && . \"$HOME/.strap/etc/straprc\"\n# strap:straprc:end"; f=1; next}; 1')"
+    echo "${val}" > ~/.bashrc
+  fi
+  if [[ -f ~/.zshrc ]] && grep -q ".strap/straprc" ~/.zshrc; then
+    val="$(cat ~/.zshrc | awk '/# strap:straprc:begin/,/# strap:straprc:end/{if (!f)print "# strap:straprc:begin\n[ -r \"$HOME/.strap/etc/straprc\" ] && . \"$HOME/.strap/etc/straprc\"\n# strap:straprc:end"; f=1; next}; 1')"
+    echo "${val}" > ~/.zshrc
+  fi
+  if [[ -f ~/.bash_profile ]] && grep -q ".strap/strapenv" ~/.bash_profile; then
+    val="$(cat ~/.bash_profile | awk '/# strap:strapenv:begin/,/# strap:strapenv:end/{if (!f)print "# strap:strapenv:begin\n[ -r \"$HOME/.strap/etc/strapenv\" ] && . \"$HOME/.strap/etc/strapenv\"\n# strap:strapenv:end"; f=1; next}; 1')"
+    echo "${val}" > ~/.bash_profile
+  fi
+  if [[ -f ~/.zshenv ]] && grep -q ".strap/strapenv" ~/.zshenv; then
+    val="$(cat ~/.zshenv | awk '/# strap:strapenv:begin/,/# strap:strapenv:end/{if (!f)print "# strap:strapenv:begin\n[ -r \"$HOME/.strap/etc/strapenv\" ] && . \"$HOME/.strap/etc/strapenv\"\n# strap:strapenv:end"; f=1; next}; 1')"
+    echo "${val}" > ~/.zshenv
+  fi
+}
+
+function ensure_strap_dotfile() {
+  local strapname="${1:-}"; strap::assert::has_length "$strapname" '$1 must be a strap dotfile name'
+  shift 1
+  strap::assert::has_length "$@" 'One or more dotfile names must be specified after the strap dotfile name'
+  local strapfile="$STRAP_USER_HOME/etc/$strapname"
+  local filename=
+  local file=
+
+  rm -rf "${STRAP_USER_HOME}/${strapname}" # remove legacy file
+  rm -rf "${strapfile}" # always start fresh
+  cp "${STRAP_HOME}/etc/${strapname}" "$strapfile"
+  chmod 600 "${strapfile}"
+
+  IFS=' ' read -a filenames <<< "$@"
+  for filename in "${filenames[@]}"; do
+
+    file="$HOME/$filename"
+    strap::fs::file::ensure "$file" '600' "~/$filename"
+
+    strap::running "Checking ~/$filename references ~/.strap/etc/${strapname}"
+    if ! grep -q "$strapname" "$file"; then
+      strap::action "Enabling ~/.strap/etc/$strapname in ~/$filename"
+      cat << EOF >> "${file}"
+
+# strap:${strapname}:begin
+[ -r "\$HOME/.strap/etc/${strapname}" ] && . "\$HOME/.strap/etc/${strapname}"
+# strap:$strapname:end
+EOF
+    fi
+    strap::ok
+  done
+}
+
+function main() {
+
+  # Trap any exit call:
+  trap cleanup SIGINT SIGTERM EXIT
+
+  [[ "$STRAP_USER" == "root" && "$STRAP_ROOT_ALLOWED" != true ]] && strap::abort "Run 'strap lansible' as yourself, not root."
+  if [[ "$STRAP_OS" == 'mac' ]] && ! groups | grep $Q admin; then strap::abort "Add $STRAP_USER to the admin group."; fi
+
+  echo -e "\n${FONT_BOLD}Bootstrapping your machine. Here we go!${FONT_CLEAR}\n"
+
+  declare -rx STRAP_SHELL=$(basename "$SHELL")
+  declare -rx STRAP_SHELL_ENV_FILE="${STRAP_USER_HOME}/strapenv"
+  declare -rx STRAP_SHELL_RC_FILE="${STRAP_USER_HOME}/straprc"
+
+  # Initialize sudo access:
+  strap::sudo::enable
+
+  #############################################################
+  # Shell init files:
+  #############################################################
+  strap::bot "Shell Init Files"
+
+  mkdir -p "${STRAP_USER_HOME}/etc"
+  mkdir -p "${STRAP_USER_HOME}/etc/straprc.d"
+  # replace legacy references if they exist:
+  clean_legacy_strap_dotfiles
+  ensure_strap_dotfile 'strapenv' '.bash_profile' '.zshenv'
+  ensure_strap_dotfile 'straprc' '.bashrc' '.zshrc'
+
+  strap::running "Checking ~/.bash_profile references ~/.bashrc per bash user guide recommendations"
+  file="$HOME/.bash_profile"
+  if ! grep -q ".bashrc" "$file"; then
+    cat << 'EOF' >> "${file}"
+
+# strap:bashrc:begin
+# source .bashrc from within .bash_profile per bash user guide:
+# https://www.gnu.org/software/bash/manual/html_node/Bash-Startup-Files.html
+[[ -r "$HOME/.bashrc" ]] && . "$HOME/.bashrc"
+# strap:bashrc:end
+EOF
+  fi
+  strap::ok
+
+  #############################################################
+  # Package Manager
+  #############################################################
+  strap::bot 'Package Manager'
+  strap::pkgmgr::init
+
+  #############################################################
+  # Python & Pip
+  #############################################################
+  strap::bot 'Python & Pip'
+  strap::python::install
+
+  #############################################################
+  # Ansible
+  #############################################################
+  strap::bot 'Ansible'
+  strap::ansible::install
+
+  #############################################################
+  # Git & GitHub:
+  #############################################################
+  strap::bot "Git & GitHub"
+
+  strap::pkgmgr::pkg::ensure openssl
+  # libsecret package names are different depending on centos/redhat and ubuntu/debian:
+  [[ "$(strap::pkgmgr::id)" == 'yum' ]] && strap::pkgmgr::pkg::ensure libsecret
+  [[ "$(strap::pkgmgr::id)" == 'aptget' ]] && strap::pkgmgr::pkg::ensure libsecret-tools
+
+  # special handling for git on centos/redhat: the git that is available via the default rpm repos is *old*
+  # and we need git to also have git-credential-libsecret
+  local git_package_name='git'
+  if [[ "$(strap::pkgmgr::id)" == 'yum' ]]; then
+    git_package_name='git2u'
+    if command -v git >/dev/null && ! git help -a | grep -q credential-libsecret; then
+      # old git install without git-credential-libsecret.  Remove it and replace with git2u
+      strap::action 'Removing out-of-date and/or incompatible git package'
+      sudo yum -y erase git >/dev/null 2>&1 || true
+      strap::ok
+    fi
+  fi
+  strap::pkgmgr::pkg::ensure "$git_package_name"
+
+  command -v curl >/dev/null || strap::pkgmgr::pkg::ensure 'curl' # needed to communicate with github api
+  strap::pkgmgr::pkg::ensure 'jq' # needed for parsing github api JSON responses
+
+  local file="$HOME/.gitconfig"
+  strap::fs::file::ensure "$file" 600 "~/.gitconfig"
+
+  strap::lib::import git || source ../lib/git.sh
+  strap::lib::import github || source ../lib/github.sh
+
+  strap::git::config::ensure core.autocrlf input
+  strap::git::config::ensure push.default simple
+  strap::git::config::ensure branch.autosetupmerge always
+  strap::git::credential::helper::ensure
+
+  local github_token='' # empty unless GH is enabled
+  if [[ "$STRAP_GITHUB_ENABLED" == true ]]; then
+
+    strap::github::user::ensure
+    local github_username="$(strap::github::user::get)"
+
+    strap::running "Checking GitHub API Token"
+    github_token="$(strap::github::token::find "$github_username")"
+    if [[ -n "$github_token" ]]; then
+      strap::ok
+      strap::running "Checking GitHub API Token validity"
+      if ! strap::github::api::token::is_valid "$github_token"; then
+        strap::action "Deleting invalid GitHub token from local storage."
+        strap::github::token::delete
+        github_token='' # clear to ensure a new one is created next
+      fi
+      strap::ok
+    fi
+    if [[ -z "$github_token" ]]; then
+      strap::action "Creating new GitHub API Token"
+      strap::github::api::token::create "$github_username"
+      github_token="$(strap::github::token::find "$github_username")"
+      [[ -z "$github_token" ]] && strap::abort "Unable to obtain newly-created GitHub API token"
+      strap::ok
+    fi
+  fi
+
+  strap::running "Checking git config user.email"
+  STRAP_GIT_EMAIL="${STRAP_GIT_EMAIL:-}"
+  local __strap_git_email="$(git config --global user.email || true)"
+  if [[ -z "$__strap_git_email" ]]; then # not set in git config, fall back to env var:
+
+    __strap_git_email="$STRAP_GIT_EMAIL"
+
+    # If not set yet, try github if possible:
+    if [[ -z "$__strap_git_email" && "$STRAP_GITHUB_ENABLED" == "true" ]]; then
+    __strap_git_email="$(strap::github::api::user::email "$github_token" || true)"
+    fi
+
+    # If not set yet and interactive, prompt user:
+    if [[ -z "$__strap_git_email" && "$STRAP_INTERACTIVE" == "true" ]]; then
+    strap::readval __strap_git_email "Enter your email address" false true
+    fi
+
+    if [[ -n "$__strap_git_email" ]]; then # store if found
+    strap::action "Setting git config user.email = $__strap_git_email"
+    git config --global user.email "$__strap_git_email"
+    fi
+  fi
+  strap::ok
+
+  strap::running "Checking git config user.name"
+  STRAP_GIT_NAME="${STRAP_GIT_NAME:-}"
+  local __strap_git_name="$(git config --global user.name || true)"
+  if [[ -z "$__strap_git_name" ]]; then # not set in config, try env var:
+
+    __strap_git_name="$STRAP_GIT_NAME"
+
+    # If not found yet, try github if possible:
+    if [[ -z "$__strap_git_name" && "$STRAP_GITHUB_ENABLED" == "true" ]]; then
+      __strap_git_name="$(strap::github::api::user::name "$github_token" || true)"
+    fi
+
+    if [[ -z "$__strap_git_name" ]]; then # still not found, inspect the operating system value if any:
+      if strap::os::is_mac; then
+        __strap_git_name="$(id -F)"
+      elif command -v getent >/dev/null; then
+        __strap_git_name="$(getent passwd "$STRAP_USER" | cut -d',' -f1 | cut -d':' -f5)"
+      fi
+    fi
+
+    # still not found, fall back to user prompt if interactive:
+    if [[ -z "$__strap_git_name" && "$STRAP_INTERACTIVE" == "true" ]]; then
+      strap::readval STRAP_GIT_NAME "Enter your first and last name" false true
+    fi
+
+    if [[ -n "$__strap_git_name" ]]; then # store if found
+      strap::action "Setting git config user.name = $__strap_git_name"
+      git config --global user.name "$__strap_git_name"
+    fi
+  fi
+  strap::ok
+
+  #############################################################
+  # Ansible Roles:
+  #############################################################
+  if [[ "$#" -gt 0 ]]; then
+    strap::bot "Run Ansible Roles"
+    strap::ansible::roles::run "$@"
+  fi
+
+  # make config/state a little more secure, just in case:
+  chmod -R go-rwx "$STRAP_USER_HOME"
+
+  STRAP_SUCCESS="1"
+  printf "\n${FONT_BOLD}${FONT_GREEN}SUCCESS: Your system is now Strap'd!${FONT_CLEAR}\n\n"
+}
+main "$@"
