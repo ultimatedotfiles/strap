@@ -63,28 +63,28 @@ function strap::ansible::install() {
 
 function strap::ansible() {
   ( # subshell so we don't alter strap's environment
-    unset -f "$(compgen -A function strap)" # remove strap functions from ansible context.  /bin/sh yells otherwise
+    unset -f $(compgen -A function strap) # remove strap functions from ansible context.  /bin/sh yells otherwise
     ansible "$@"
   )
 }
 
 function strap::ansible-galaxy() {
   (
-    unset -f "$(compgen -A function strap)"
+    unset -f $(compgen -A function strap)
     ansible-galaxy "$@"
   )
 }
 
 function strap::ansible-galaxy-install() {
   (
-    unset -f "$(compgen -A function strap)"
+    unset -f $(compgen -A function strap)
     "${STRAP_ANSIBLE_GALAXY_INSTALL_SCRIPT}" "$@"
   )
 }
 
 function strap::ansible-playbook() {
   (
-    unset -f "$(compgen -A function strap)"
+    unset -f $(compgen -A function strap)
     ansible-playbook "$@"
   )
 }
