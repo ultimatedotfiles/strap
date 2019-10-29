@@ -19,6 +19,11 @@ STRAP_INTERACTIVE="${STRAP_INTERACTIVE:-}"; [[ -n "$STRAP_INTERACTIVE" ]] || STR
 STRAP_ANSIBLE_VERSION="${STRAP_ANSIBLE_VERSION:-}"
 STRAP_ANSIBLE_DIR="${STRAP_USER_HOME}/ansible"
 STRAP_ANSIBLE_LOG_FILE="${STRAP_ANSIBLE_DIR}/ansible.log"
+STRAP_ANSIBLE_BIN_DIR="${STRAP_ANSIBLE_DIR}/bin"
+STRAP_ANSIBLE_GALAXY_INSTALL_SCRIPT="${STRAP_ANSIBLE_BIN_DIR}/ansible-galaxy-install"
+STRAP_ANSIBLE_GALAXY_INSTALL_SCRIPT_VERSION="${STRAP_ANSIBLE_GALAXY_INSTALL_SCRIPT_VERSION:-0.1.0}"
+STRAP_ANSIBLE_GALAXY_INSTALL_SCRIPT_URL="${STRAP_ANSIBLE_GALAXY_INSTALL_SCRIPT_URL:-}"
+[[ -n "${STRAP_ANSIBLE_GALAXY_INSTALL_SCRIPT_URL}" ]] || STRAP_ANSIBLE_GALAXY_INSTALL_SCRIPT_URL="https://raw.githubusercontent.com/lhazlewood/ansible-galaxy-install/${STRAP_ANSIBLE_GALAXY_INSTALL_SCRIPT_VERSION}/bin/ansible-galaxy-install"
 STRAP_ANSIBLE_ROLES_DIR="${STRAP_ANSIBLE_DIR}/roles"
 STRAP_ANSIBLE_PLAYBOOKS_DIR="${STRAP_ANSIBLE_DIR}/playbooks"
 STRAP_ANSIBLE_IMPLICIT_PLAYBOOK_DIR="${STRAP_ANSIBLE_PLAYBOOKS_DIR}/.implicit"
@@ -31,7 +36,7 @@ set -a
 
 function strap::ansible::install() {
 
-  local output= retval= venv_dir="${STRAP_USER_HOME}/.venv"
+  local output= retval= wrapper_file= venv_dir="${STRAP_USER_HOME}/.venv"
 
   if [[ -n "${STRAP_ANSIBLE_VERSION}" ]]; then
     strap::running "Ensuring strap virtualenv ansible version ${STRAP_ANSIBLE_VERSION}"
@@ -40,6 +45,19 @@ function strap::ansible::install() {
     strap::running "Ensuring strap virtualenv ansible"
     strap::exec python -m pip install --upgrade ansible
   fi
+  strap::ok
+
+  strap::os::is_mac && strap::pkgmgr::pkg::ensure 'gnu-tar' # needed for ansible 'unarchive' module on macOS
+
+  command -v curl >/dev/null 2>&1 || strap::pkgmgr::pkg::ensure 'curl' # needed to download wrapper script
+
+  strap::running "Checking strap ansible-galaxy-install wrapper"
+  if [[ ! -f "${STRAP_ANSIBLE_GALAXY_INSTALL_SCRIPT}" ]]; then
+    mkdir -p "${STRAP_ANSIBLE_BIN_DIR}"
+    strap::action 'Downloading strap ansible-galaxy-install wrapper'
+    curl -fsSL "${STRAP_ANSIBLE_GALAXY_INSTALL_SCRIPT_URL}" -o "${STRAP_ANSIBLE_GALAXY_INSTALL_SCRIPT}"
+  fi
+  [[ -x "${STRAP_ANSIBLE_GALAXY_INSTALL_SCRIPT}" ]] || chmod u+x "${STRAP_ANSIBLE_GALAXY_INSTALL_SCRIPT}"
   strap::ok
 }
 
@@ -54,6 +72,13 @@ function strap::ansible-galaxy() {
   (
     unset -f "$(compgen -A function strap)"
     ansible-galaxy "$@"
+  )
+}
+
+function strap::ansible-galaxy-install() {
+  (
+    unset -f "$(compgen -A function strap)"
+    "${STRAP_ANSIBLE_GALAXY_INSTALL_SCRIPT}" "$@"
   )
 }
 
@@ -128,7 +153,9 @@ function strap::ansible::roles::run() {
   roles_dir="${playbook_dir}/roles"
 
   # all runs start fresh:
-  rm -rf "${STRAP_ANSIBLE_DIR}"
+  rm -rf "${playbook_dir}"
+  rm -rf "${roles_dir}"
+  rm -rf "${STRAP_ANSIBLE_LOG_FILE}"
   mkdir -p "${playbook_dir}" 2>/dev/null
   mkdir -p "${roles_dir}" 2>/dev/null
 
@@ -240,15 +267,14 @@ EOF
   (
     cd "${playbook_dir}"
     export ANSIBLE_LOG_PATH="${STRAP_ANSIBLE_LOG_FILE}"
-    unset -f $(compgen -A function strap)
-    ansible-galaxy install -r "${requirements_file}" --force
+    strap::ansible-galaxy-install -r "${requirements_file}"
     printf '\nRunning ansible to manage localhost.'
     if [[ "${STRAP_INTERACTIVE}" == true ]]; then
       printf ' Please enter your SUDO/' # make the --ask-become-pass prompt more visible/obvious
     else
       printf '\n'
     fi
-    ansible-playbook -i "${STRAP_HOME}/etc/ansible/hosts" "$@" "${playbook_file}"
+    strap::ansible-playbook -i "${STRAP_HOME}/etc/ansible/hosts" "$@" "${playbook_file}"
   )
 }
 
