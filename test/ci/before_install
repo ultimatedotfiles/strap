@@ -42,6 +42,8 @@ function main() {
     # Remove the developer environment that travis installs by default - we need to ensure our project can install it:
     brew_uninstall
   fi
+  
+  rm -rf "${HOME}/.gitconfig" # clear out any travis-suppplied config.  Strap should set this up.
   #- rm -rf ~/.ssh/id_rsa # travis puts this here, but we want our script to generate one for strap's purposes
 }
 main

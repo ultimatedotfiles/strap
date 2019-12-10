@@ -8,9 +8,10 @@ strap::lib::import lang || . lang.sh
 
 set -a
 
-__strap_os_distro="${__strap_os_distro:-}"
-
 strap::os::category() {
+
+  [[ -n "${STRAP_OS:-}" ]] && echo "${STRAP_OS}" && return 0 # cached, exit early
+
   local os
   local out="$(uname -s)"
   case "${out}" in
@@ -26,12 +27,10 @@ readonly STRAP_OS="$(strap::os::category)"
 
 strap::os::distro() {
 
-  [[ -n "${STRAP_OS_DISTRO:-}" ]] && echo "${STRAP_OS_DISTRO}" && return 0 # cached, exit early for better performance
+  [[ -n "${STRAP_OS_DISTRO:-}" ]] && echo "${STRAP_OS_DISTRO}" && return 0 # cached, exit early
 
-  local distro=''
-  [[ "$STRAP_OS" == 'mac' ]] && distro='darwin'
-  local output=
-  output="$(lsb_release -ds 2>/dev/null || cat /etc/*release 2>/dev/null | head -n1 || uname -om 2>/dev/null || uname -s)"
+  local distro= output=
+  output="$(set -o pipefail; lsb_release -ds 2>/dev/null || cat /etc/*release 2>/dev/null | head -n1 || uname -om 2>/dev/null || uname -s)"
 
   case "${output}" in
     Darwin)  distro='darwin' ;;
@@ -44,14 +43,10 @@ strap::os::distro() {
 
   echo "$distro"
 }
-declare -rx STRAP_OS_DISTRO="$(strap::os::distro)"
+readonly STRAP_OS_DISTRO="$(strap::os::distro)"
 
 strap::os::is_mac() {
-  if [[ "$STRAP_OS" == 'mac' ]]; then
-    return 0
-  else
-    return 1
-  fi
+  [[ "$STRAP_OS" == 'mac' ]]
 }
 
 strap::semver::version() {
