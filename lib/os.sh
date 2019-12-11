@@ -15,11 +15,11 @@ strap::os::category() {
   local os
   local out="$(uname -s)"
   case "${out}" in
-    Linux*)  os='linux' ;;
-    Darwin*) os='mac' ;;
-    CYGWIN*) os='cygwin' ;;
-    MINGW*)  os='mingw' ;;
-    *)       os="UNKNOWN:${os}" ;;
+    Linux*)   os='linux' ;;
+    *Darwin*) os='mac' ;;
+    CYGWIN*)  os='cygwin' ;;
+    MINGW*)   os='mingw' ;;
+    *)        os="UNKNOWN:${os}" ;;
   esac
   echo "$os"
 }
@@ -33,7 +33,7 @@ strap::os::distro() {
   output="$(set -o pipefail; lsb_release -ds 2>/dev/null || cat /etc/*release 2>/dev/null | head -n1 || uname -om 2>/dev/null || uname -s)"
 
   case "${output}" in
-    Darwin)  distro='darwin' ;;
+    *Darwin*) distro='darwin' ;;
     *Ubuntu*) distro='ubuntu' ;;
     *Debian*) distro='debian' ;;
     *CentOS*) distro='centos' ;;
