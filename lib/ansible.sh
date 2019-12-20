@@ -278,7 +278,7 @@ EOF
   )
 }
 
-strap:ansible:playbook::run() {
+strap::ansible::playbook::run() {
 
   local playbook_dir="$(pwd)/.strap/ansible/playbooks/default"
   local playbook_file= requirements_file= 
@@ -318,7 +318,7 @@ strap:ansible:playbook::run() {
 
   playbook_file="${playbook_dir}/main.yml"
   requirements_file="${playbook_dir}/meta/requirements.yml"
-  [[ -f "${reqfile}" ]] || requirements_file="${playbook_dir}/requirements.yml"
+  [[ -f "${requirements_file}" ]] || requirements_file="${playbook_dir}/requirements.yml"
 
   (
     cd "${playbook_dir}"
@@ -330,7 +330,7 @@ strap:ansible:playbook::run() {
     else
       printf '\n'
     fi
-    strap::ansible-playbook "$@" "${playbook_file}"
+    strap::ansible-playbook -i "${STRAP_HOME}/etc/ansible/hosts" "$@" "${playbook_file}"
   )
 }
 

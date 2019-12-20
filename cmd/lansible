@@ -307,12 +307,12 @@ EOF
   #############################################################
   # Ansible Roles/Playbook:
   #############################################################
-  if [[ "$@" == *--with-role* ]] then
+  if [[ "$@" == *--with-role* ]]; then
     strap::bot "Run Ansible Roles"
     strap::ansible::roles::run "$@"
-  elif [[ -d ".strap/ansible/playbooks/default" ]] 
+  elif [[ -d ".strap/ansible/playbooks/default" ]]; then
     strap::bot "Run Ansible Playbook"
-    strap::ansible::playbook:run "$@"
+    strap::ansible::playbook::run "$@"
   fi
 
   # make config/state a little more secure, just in case:
