@@ -305,11 +305,18 @@ EOF
   strap::ok
 
   #############################################################
-  # Ansible Roles:
+  # Ansible Roles/Playbook:
   #############################################################
-  if [[ "$#" -gt 0 ]]; then
+
+  if [[ "$@" == *--role* ]] || [[ "$@" == *--with-role* ]]; then
     strap::bot "Run Ansible Roles"
     strap::ansible::roles::run "$@"
+  elif [[ "$@" == *--playbook* ]] || [[ "$@" == *--with-playbook* ]]; then
+    strap::bot "Run Ansible Playbook"
+    strap::ansible::playbook::run "$@"
+  elif [[ -d "${STRAP_WORKING_DIR}/.strap/ansible/playbooks/default" ]]; then
+    strap::bot "Run Ansible Playbook"
+    strap::ansible::playbook::run --with-playbook="${STRAP_WORKING_DIR}/.strap/ansible/playbooks/default" "$@" 
   fi
 
   # make config/state a little more secure, just in case:

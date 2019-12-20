@@ -1,0 +1,7 @@
+---
+- name: CI Test 
+  hosts: 127.0.0.1
+  tasks:
+    - name: Display Message 
+      debug:
+        msg: "Hello World"
