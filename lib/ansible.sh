@@ -278,4 +278,60 @@ EOF
   )
 }
 
+strap:ansible:playbook::run() {
+
+  local playbook_dir="$(pwd)/.strap/ansible/playbooks/default"
+  local playbook_file= requirements_file= 
+
+  while (( "$#" )); do
+    [[ "$1" == --*=* ]] && set -- "${1%%=*}" "${1#*=}" "${@:2}" # normalize `--foo=bar` into `--foo bar`
+    case "$1" in
+      --playbook-dir|--with-playbook-dir)
+        playbook_dir="${2:-$(pwd)/.strap/ansible/playbooks/default}"
+        [[ -d "${playbook_dir}" ]] || strap::abort "strap lansible: $1 needs to be a directory"
+        shift 2
+        ;;
+      -i|--inventory|--inventory-file)
+        strap::abort "strap lansible: $1 is not supported since localhost is always used (lansible = 'localhost ansible')."
+        ;;
+      -K|--ask-become-pass) # ignore - we add this no matter what
+        shift
+        ;;
+      --) # end argument parsing
+        shift
+        break
+        ;;
+      *) # preserve positional args
+        params+=("$1")
+        shift
+        ;;
+    esac
+  done
+
+  if [[ "${STRAP_INTERACTIVE}" == true ]]; then # false in CI
+    params+=( '--ask-become-pass' )
+  fi
+
+  if [[ "${#params[@]}" -gt 0 ]]; then
+    set -- "${params[@]}" # reset positional arguments
+  fi
+
+  playbook_file="${playbook_dir}/main.yml"
+  requirements_file="${playbook_dir}/meta/requirements.yml"
+  [[ -f "${reqfile}" ]] || requirements_file="${playbook_dir}/requirements.yml"
+
+  (
+    cd "${playbook_dir}"
+    export ANSIBLE_LOG_PATH="${STRAP_ANSIBLE_LOG_FILE}"
+    strap::ansible-galaxy-install -r "${requirements_file}"
+    printf '\nRunning ansible to manage localhost.'
+    if [[ "${STRAP_INTERACTIVE}" == true ]]; then
+      printf ' Please enter your SUDO/' # make the --ask-become-pass prompt more visible/obvious
+    else
+      printf '\n'
+    fi
+    strap::ansible-playbook "$@" "${playbook_file}"
+  )
+}
+
 set +a
