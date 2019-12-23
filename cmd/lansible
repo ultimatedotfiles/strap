@@ -312,8 +312,10 @@ EOF
     strap::bot "Run Ansible Roles"
     strap::ansible::roles::run "$@"
   elif [[ "$@" == *--playbook* ]] || [[ "$@" == *--with-playbook* ]]; then
+    set -x
     strap::bot "Run Ansible Playbook"
     strap::ansible::playbook::run "$@"
+    set +x
   elif [[ -d "${STRAP_WORKING_DIR}/.strap/ansible/playbooks/default" ]]; then
     strap::bot "Run Ansible Playbook"
     strap::ansible::playbook::run --with-playbook="${STRAP_WORKING_DIR}/.strap/ansible/playbooks/default" "$@" 
