@@ -320,10 +320,15 @@ strap::ansible::playbook::run() {
   requirements_file="${playbook_dir}/meta/requirements.yml"
   [[ -f "${requirements_file}" ]] || requirements_file="${playbook_dir}/requirements.yml"
 
+  # run starts fresh
+  rm -rf "${STRAP_ANSIBLE_ROLES_DIR}"
+  rm -rf "${STRAP_ANSIBLE_LOG_FILE}"
+
   (
+    export ANSIBLE_ROLES_PATH="${STRAP_ANSIBLE_ROLES_DIR}"
     cd "${playbook_dir}"
     export ANSIBLE_LOG_PATH="${STRAP_ANSIBLE_LOG_FILE}"
-    [[ -f "${requirements_file}" ]] && strap::ansible-galaxy-install -r "${requirements_file}" --force
+    [[ -f "${requirements_file}" ]] && strap::ansible-galaxy-install -r "${requirements_file}" 
     printf '\nRunning ansible to manage localhost.'
     if [[ "${STRAP_INTERACTIVE}" == true ]]; then
       printf ' Please enter your SUDO/' # make the --ask-become-pass prompt more visible/obvious
