@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Summary: Runs strap and ansible playbook/role(s) to ensure your machine is fully configured
-# Usage: strap lansible [--role|--with-role <ansible_role>] [--playbook|--with-playbook <ansible_playbook>] 
+# Summary: Runs strap to ensure your machine is fully configured
+# Usage: strap lansible
 
 set -Eeuo pipefail # https://vaneyckt.io/posts/safer_bash_scripts_with_set_euxo_pipefail/
 
@@ -38,7 +38,6 @@ STRAP_QUIET_FLAG="-q"
 Q="$STRAP_QUIET_FLAG"
 
 STRAP_ISSUES_URL="https://github.com/ultimatedotfiles/strap/issues/new"
-STRAP_LANSIBLE_DEFAULT_PLAYBOOK=".strap/ansible/playbooks/default/main.yml"
 
 function array_contains() {
   local -r arr="${1:-}" value="${2:-}"
@@ -123,18 +122,11 @@ EOF
   done
 }
 
-function argument_check() {
-  if ! [[ "$@" == *--role* || "$@" == *--with-role* || "$@" == *--playbook* || "$@" == *--with-playbook* ]] && ! [[ -z "$@" && -f "${STRAP_WORKING_DIR}/${STRAP_LANSIBLE_DEFAULT_PLAYBOOK}" ]]; then
-    strap::abort "Unknown options $@ for strap lansible or no default ansible playbook ${STRAP_LANSIBLE_DEFAULT_PLAYBOOK} is found under current working directory."
-  fi
-}
-
 function main() {
 
   # Trap any exit call:
   trap cleanup SIGINT SIGTERM EXIT
 
-  argument_check "$@"
   [[ "$STRAP_USER" == "root" && "$STRAP_ROOT_ALLOWED" != true ]] && strap::abort "Run 'strap lansible' as yourself, not root."
   if [[ "$STRAP_OS" == 'mac' ]] && ! groups | grep $Q admin; then strap::abort "Add $STRAP_USER to the admin group."; fi
 
@@ -322,9 +314,9 @@ EOF
   elif [[ "$@" == *--playbook* ]] || [[ "$@" == *--with-playbook* ]]; then
     strap::bot "Run Ansible Playbook"
     strap::ansible::playbook::run "$@"
-  elif [[ -z "$@" ]] && [[ -f "${STRAP_WORKING_DIR}/${STRAP_LANSIBLE_DEFAULT_PLAYBOOK}" ]]; then
+  elif [[ -d "${STRAP_WORKING_DIR}/.strap/ansible/playbooks/default" ]]; then
     strap::bot "Run Ansible Playbook"
-    strap::ansible::playbook::run --with-playbook="${STRAP_WORKING_DIR}/${STRAP_LANSIBLE_DEFAULT_PLAYBOOK}" "$@"
+    strap::ansible::playbook::run --with-playbook="${STRAP_WORKING_DIR}/.strap/ansible/playbooks/default" "$@" 
   fi
 
   # make config/state a little more secure, just in case:
