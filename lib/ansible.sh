@@ -287,8 +287,8 @@ strap::ansible::playbook::run() {
     [[ "$1" == --*=* ]] && set -- "${1%%=*}" "${1#*=}" "${@:2}" # normalize `--foo=bar` into `--foo bar`
     case "$1" in
       --playbook|--with-playbook)
-        playbook_file="${2}"
-        [[ -f "${playbook_file}" ]] || strap::abort "strap lansible: ${playbook_file} doesn't exist!"
+        playbook_dir="${2:-${STRAP_WORKING_DIR}/.strap/ansible/playbooks/default}"
+        [[ -d "${playbook_dir}" ]] || strap::abort "strap lansible: $1 needs to be a directory"
         shift 2
         ;;
       -i|--inventory|--inventory-file)
@@ -316,7 +316,7 @@ strap::ansible::playbook::run() {
     set -- "${params[@]}" # reset positional arguments
   fi
 
-  playbook_dir="$(dirname $playbook_file)"
+  playbook_file="${playbook_dir}/main.yml"
   requirements_file="${playbook_dir}/meta/requirements.yml"
   [[ -f "${requirements_file}" ]] || requirements_file="${playbook_dir}/requirements.yml"
 

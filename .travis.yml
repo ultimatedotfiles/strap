@@ -39,7 +39,7 @@ jobs:
 
 before_install: test/ci/before_install
 
-install: skip 
+install: false
 
 script: test/ci/run
 
