@@ -36,6 +36,6 @@ function main() {
   pushd "${TRAVIS_BUILD_DIR}/test" > /dev/null
     STRAP_INTERACTIVE=false "${TRAVIS_BUILD_DIR}/bin/strap" lansible
   popd > /dev/null
-  STRAP_INTERACTIVE=false bin/strap lansible --playbook="${TRAVIS_BUILD_DIR}/test/.strap/ansible/playbooks/default"
+  STRAP_INTERACTIVE=false bin/strap lansible --playbook="${TRAVIS_BUILD_DIR}/test/.strap/ansible/playbooks/default/main.yml"
 }
 main
