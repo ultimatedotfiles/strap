@@ -26,6 +26,6 @@ strap::yum::init() {
     strap::yum::pkg::install 'epel-release'
   fi
   if ! strap::yum::pkg::is_installed 'ius-release'; then # needed for git2u (up to date git and git-credential-libsecret) and python3
-    sudo yum -y install 'https://centos7.iuscommunity.org/ius-release.rpm'
+    sudo yum -y install 'https://repo.ius.io/ius-release-el7.rpm'
   fi
 }
